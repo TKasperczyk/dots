@@ -1,0 +1,116 @@
+
+{
+    // —————————————————————————————————————————————————————————————————————————
+    // General Bar Settings
+    // —————————————————————————————————————————————————————————————————————————
+    "position"       : "bottom",
+    "layer"          : "bottom",
+    "margin-top"     : 0,
+    "margin-bottom"  : 5,
+    "start_hidden"   : true,
+
+    // —————————————————————————————————————————————————————————————————————————
+    // Modules Layout
+    // —————————————————————————————————————————————————————————————————————————
+    "modules-left"   : ["image", "hyprland/workspaces", "cpu", "temperature", "memory"],
+    "modules-center" : ["hyprland/window"],
+    "modules-right"  : ["network", "pulseaudio", "battery", "clock", "tray"],
+
+    // —————————————————————————————————————————————————————————————————————————
+    // Module Configurations
+    // —————————————————————————————————————————————————————————————————————————
+
+    "image": {
+        "path"     : "/home/luth/Pictures/arch_icon.png",
+        "size"     : 24,
+        "interval" : 5
+    },
+
+    "pulseaudio": {
+        "interval"         : 5,
+        "format"           : "{icon}  {desc} {volume}%",
+        "format-bluetooth" : "{icon}  {desc} {volume}%",
+        "format-muted"     : "  Muted",
+        "format-icons"     : {
+            "alsa_output.usb-JBL_JBL_Quantum_One_20190706.1-00.analog-stereo"                    : "",
+            "bluez_output.AC_80_0A_90_1C_79.1.a2dp-sink"                                         : "",
+            "bluez_output.A6_18_1B_CF_FB_B3.a2dp-sink"                                           : "",
+            "bluez_output.34_15_13_BB_31_60.1.a2dp-sink"                                         : "",
+            "alsa_output.usb-AudioQuest_AudioQuest_DragonFly_Cobalt_v1.0_AQDFCB0101023084-00.analog-stereo" : "",
+            "alsa_output.pci-0000_00_1f.3.analog-stereo"                                         : "",
+            "default"                                                                           : ["", "", ""]
+        },
+        "on-click"         : "pavucontrol"
+    },
+
+    "network": {
+        "format-wifi"         : " {essid}",
+        "format-ethernet"     : " {ifname}: {ipaddr}/{cidr}",
+        "format-linked"       : " {ifname} (No IP)",
+        "format-disconnected" : "ﳤ Disconnected",
+        "format-alt"          : "{ifname}: {ipaddr}/{cidr}"
+    },
+
+    "backlight": {
+        "tooltip"      : false,
+        "format"       : " {}%",
+        "interval"     : 1,
+        "on-scroll-up"   : "brightnessctl s 1%+",
+        "on-scroll-down" : "brightnessctl s 1%-"
+    },
+
+    "battery": {
+        "states"         : { "warning": 30, "critical": 15 },
+        "format"         : " {icon} {capacity}%",
+        "format-charging": "  {capacity}%",
+        "format-plugged" : " {capacity}%",
+        "format-full"    : "  {capacity}%",
+        "format-alt"     : "  {time} {icon}",
+        "format-icons"   : ["", "", ""]
+    },
+
+    "tray": {
+        "icon-size" : 18,
+        "spacing"   : 10
+    },
+
+    "clock": {
+        "format" : "  {:%Y-%m-%d - %H:%M:%S}"
+    },
+
+    "cpu": {
+        "interval"     : 1,
+        "format"       : "  {icon0} {icon1} {icon2} {icon3} {icon4} {icon5} {icon6} {icon7} {icon8} {icon9} {icon10} {icon11}",
+        "format-icons" : ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
+    },
+
+    "hyprland/workspaces": {
+        "format" : "{icon}"
+        /* Uncomment & customize icons if desired:
+        "format-icons": {
+            "1": "",
+            "2": "",
+            "3": "",
+            "4": ""
+        }
+        */
+    },
+
+    "disk": {
+        "format" : "🖫 /: {percentage_used}%",
+        "path"   : "/"
+    },
+
+    "memory": {
+        "interval" : 30,
+        "format"   : " {used:0.1f}G / {total:0.1f}G"
+    },
+
+    "hyprland/window": {
+        "max-length"       : 1,
+        "separate-outputs" : false,
+        "icon"             : true,
+        "format"           : ""
+    }
+}
+

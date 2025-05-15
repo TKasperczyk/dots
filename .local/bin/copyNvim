@@ -1,0 +1,1 @@
+find ~/.config/nvim -type f ! -name '*.json' -exec sh -c 'echo "{}"; cat "{}"' \; | wl-copy
