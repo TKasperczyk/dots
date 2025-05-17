@@ -51,13 +51,32 @@ return {
                 },
                 single_file_support = true,
             })
+
+            local svelte_caps = vim.tbl_deep_extend("force", caps, {
+                workspace = { didChangeWatchedFiles = false }
+            })
+
+            local function svelte_on_attach(client, bufnr)
+                if client.name == "svelte" then
+                    vim.api.nvim_create_autocmd("BufWritePost", {
+                        pattern = { "*.js", "*.ts" },
+                        group = vim.api.nvim_create_augroup("svelte_ondidchangetsorjsfile", { clear = true }),
+                        callback = function(ctx)
+                            client.notify("$/onDidChangeTsOrJsFile", { uri = ctx.match })
+                        end,
+                    })
+                end
+            end
+
             lspconfig.svelte.setup({
-                capabilities        = caps,
-                init_options        = {
+                capabilities = svelte_caps,
+                on_attach = svelte_on_attach,
+                init_options = {
                     lint     = true,
                     unstable = true,
                 },
-                root_dir            = util.root_pattern("svelte.config.json"),
+                filetypes = { "svelte", "typescript", "javascript" },
+                root_dir = util.root_pattern("svelte.config.json"),
                 single_file_support = false,
             })
             lspconfig.tailwindcss.setup({
