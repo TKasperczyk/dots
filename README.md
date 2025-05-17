@@ -9,6 +9,12 @@
 
 ---
 
+## 🎥 Preview
+
+[![Preview of rice](preview.webp)]
+
+---
+
 ## 🚀 Features
 
 * **Hyprland**: Animated workspaces, custom binds, decors & themed window rules
