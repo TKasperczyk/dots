@@ -58,6 +58,8 @@ return {
 
             local function svelte_on_attach(client, bufnr)
                 if client.name == "svelte" then
+                    client.server_capabilities.documentFormattingProvider = true
+                    client.server_capabilities.documentRangeFormattingProvider = true
                     vim.api.nvim_create_autocmd("BufWritePost", {
                         pattern = { "*.js", "*.ts" },
                         group = vim.api.nvim_create_augroup("svelte_ondidchangetsorjsfile", { clear = true }),
