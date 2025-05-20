@@ -2,6 +2,27 @@
 vim.keymap.set('n', 'd', '"_d', { noremap = true })
 vim.keymap.set('v', 'd', '"_d', { noremap = true })
 
+vim.keymap.set('n', 'c', '"_c', { noremap = true })
+vim.keymap.set('v', 'c', '"_c', { noremap = true })
+
+vim.keymap.set('n', 'x', '"_x', { noremap = true })
+vim.keymap.set('v', 'x', '"_x', { noremap = true })
+
+vim.keymap.set('n', 's', '"_s', { noremap = true })
+vim.keymap.set('v', 's', '"_s', { noremap = true })
+
+-- Uppercase variants
+vim.keymap.set('n', 'C', '"_C', { noremap = true })
+vim.keymap.set('n', 'D', '"_D', { noremap = true })
+vim.keymap.set('n', 'S', '"_S', { noremap = true })
+
+-- Optional: X (backspace-like delete in normal mode)
+vim.keymap.set('n', 'X', '"_X', { noremap = true })
+
+-- Cut (delete and yank) using d as it was before
+vim.keymap.set('v', '<leader>d', 'd', { noremap = true })
+vim.keymap.set('n', '<leader>d', 'd', { noremap = true })
+
 -- Go to next diagnostic
 vim.keymap.set("n", "]d", function()
     vim.diagnostic.jump({ count = 1 })
