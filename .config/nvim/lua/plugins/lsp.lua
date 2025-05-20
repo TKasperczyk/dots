@@ -11,10 +11,6 @@ return {
         config = function()
             require("neodev").setup()
 
-            local capabilities = require("blink.cmp").get_lsp_capabilities()
-            local util         = require("lspconfig.util")
-
-
             local lspconfig = require("lspconfig")
             local util      = require("lspconfig.util")
             local caps      = require("blink.cmp").get_lsp_capabilities()
@@ -90,17 +86,28 @@ return {
                 root_dir            = util.root_pattern("tailwind.config.ts"),
                 single_file_support = false,
             })
+            lspconfig.phpactor.setup({
+                capabilities = caps,
+                init_options = {
+                    ["language_server_phpstan.enabled"]      = false,
+                    ["language_server_psalm.enabled"]        = false,
+                    ["language_server_php_cs_fixer.enabled"] = false,
+                },
+                -- detect the project root by composer.json or git:
+                root_dir = util.root_pattern("composer.json", ".git"),
+            })
 
             require("mason").setup()
             require("mason-lspconfig").setup({
-                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls" },
+                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor" },
                 automatic_enable = false,
             })
 
             --vim.lsp.enable("denols")
             vim.lsp.enable("svelte")
             vim.lsp.enable("vtsls")
-
+            vim.lsp.enable("lua_ls")
+            vim.lsp.enable("phpactor")
 
             vim.api.nvim_create_autocmd('LspAttach', {
                 callback = function(args)
