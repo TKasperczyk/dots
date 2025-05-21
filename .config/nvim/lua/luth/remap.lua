@@ -44,12 +44,12 @@ vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "LSP Go to definition
 vim.keymap.set("v", "<C-Down>", ":m '>+1'<CR>gv=gv")
 vim.keymap.set("v", "<C-Up>", ":m '>-2'<CR>gv=gv")
 
-vim.keymap.set("n", "<leader>pv", function()
-    -- Check if Neo-tree is already open on the left
-    local is_open = vim.fn.bufwinnr("neo-tree") ~= -1
-    if is_open then
-        vim.cmd("Neotree close")
-    else
-        vim.cmd("Neotree reveal")
-    end
-end, { desc = "Toggle NeoTree at current file" })
+--vim.keymap.set("n", "<leader>pv", function()
+--    -- Check if Neo-tree is already open on the left
+--    local is_open = vim.fn.bufwinnr("neo-tree") ~= -1
+--    if is_open then
+--        vim.cmd("Neotree close")
+--    else
+--        vim.cmd("Neotree reveal")
+--    end
+--end, { desc = "Toggle NeoTree at current file" })
