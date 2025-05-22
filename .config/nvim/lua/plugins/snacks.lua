@@ -1,17 +1,37 @@
 return {
     "folke/snacks.nvim",
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
     priority = 1000,
     lazy = false,
     keys = {
-        { "<leader>ps", function() Snacks.picker.grep() end,  desc = "Grep" },
-        { "<leader>pf", function() Snacks.picker.smart() end, desc = "Smart Find Files" },
-        { "<leader>pv", function() Snacks.explorer() end,     desc = "File Explorer" },
-
-
+        { "<leader>ps", function() Snacks.picker.grep() end,        desc = "Grep" },
+        { "<leader>pf", function() Snacks.picker.files() end,       desc = "Smart Find Files" },
+        { "<leader>pv", function() Snacks.explorer() end,           desc = "File Explorer" },
+        { "<leader>gg", function() Snacks.lazygit() end,            desc = "Lazygit" },
+        { "<leader>sd", function() Snacks.picker.diagnostics() end, desc = "Diagnostics" },
     },
+    init = function()
+        vim.api.nvim_create_autocmd("User", {
+            pattern = "VeryLazy",
+            callback = function()
+                -- Setup some globals for debugging (lazy-loaded)
+                _G.dd = function(...)
+                    Snacks.debug.inspect(...)
+                end
+                _G.bt = function()
+                    Snacks.debug.backtrace()
+                end
+                vim.print = _G.dd -- Override print to use snacks for `:=` command
+
+                -- Create some toggle mappings
+                Snacks.toggle.option("spell", { name = "Spelling" }):map("<leader>us")
+                Snacks.toggle.option("wrap", { name = "Wrap" }):map("<leader>uw")
+                Snacks.toggle.dim():map("<leader>uD")
+            end,
+        })
+    end,
     config = function()
         Snacks = require("snacks")
-        ---@type snacks.Config
         local Path = require("plenary.path")
         local Snacks = require("snacks")
 
@@ -118,12 +138,15 @@ return {
             vim.fn.setreg("+", md)
             Snacks.notify.info(("Copied %d file(s) for LLM"):format(#filtered))
         end
+
+        ---@type snacks.Config
         Snacks.setup({
 
             -- your configuration comes here
             -- or leave it empty to use the default settings
             -- refer to the configuration section below
             bigfile      = { enabled = true },
+            ---@class snacks.dashboard.Config
             dashboard    = {
                 enabled = true,
                 width = 60,
@@ -150,14 +173,6 @@ return {
                         { icon = "󰒲 ", key = "L", desc = "Lazy", action = ":Lazy", enabled = package.loaded.lazy ~= nil },
                         { icon = " ", key = "q", desc = "Quit", action = ":qa" },
                     },
-                    -- Used by the header section
-                    header = [[
-███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗
-████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║
-██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║
-██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║
-██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║
-╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝]],
                 },
                 -- item field formatters
                 formats = {
@@ -186,7 +201,13 @@ return {
                     end,
                 },
                 sections = {
-                    { section = "header" },
+                    {
+                        section = "terminal",
+                        cmd = "ascii-image-converter -C -c ~/.config/nvim/header.png",
+                        indent = 11,
+                        gap = 20,
+                        height = 25,
+                    },
                     { section = "keys",   gap = 1, padding = 1 },
                     { section = "startup" },
                 },
