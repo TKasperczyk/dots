@@ -41,5 +41,7 @@ vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "LSP Hover" })
 -- Go to definition
 vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "LSP Go to definition" })
 
+vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, { desc = "LSP Rename" })
+
 vim.keymap.set("v", "<C-Down>", ":m '>+1'<CR>gv=gv")
 vim.keymap.set("v", "<C-Up>", ":m '>-2'<CR>gv=gv")
