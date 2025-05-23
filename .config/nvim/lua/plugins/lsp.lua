@@ -74,7 +74,7 @@ return {
                     unstable = true,
                 },
                 filetypes = { "svelte", "typescript", "javascript" },
-                root_dir = util.root_pattern("svelte.config.json"),
+                root_dir = util.root_pattern("svelte.config.js"),
                 single_file_support = false,
             })
             lspconfig.tailwindcss.setup({
@@ -109,17 +109,23 @@ return {
             vim.lsp.enable("lua_ls")
             vim.lsp.enable("phpactor")
 
-            vim.api.nvim_create_autocmd('LspAttach', {
-                callback = function(args)
-                    local c = vim.lsp.get_client_by_id(args.data.client_id)
-                    if not c then return end
-
-                    -- Format the current buffer on save
-                    vim.api.nvim_create_autocmd('BufWritePre', {
-                        buffer = args.buf,
-                        callback = function()
-                            vim.lsp.buf.format({ bufnr = args.buf, id = c.id })
+            vim.api.nvim_create_autocmd('BufWritePre', {
+                pattern = "*",
+                callback = function()
+                    vim.lsp.buf.format({
+                        filter = function(client)
+                            -- For TypeScript/JavaScript files, only use vtsls
+                            if vim.bo.filetype == "typescript" or vim.bo.filetype == "javascript" then
+                                return client.name == "vtsls"
+                            end
+                            -- For Svelte files, only use svelte
+                            if vim.bo.filetype == "svelte" then
+                                return client.name == "svelte"
+                            end
+                            -- For other files, use any client that supports formatting
+                            return client.supports_method("textDocument/formatting")
                         end,
+                        timeout_ms = 2000,
                     })
                 end,
             })
