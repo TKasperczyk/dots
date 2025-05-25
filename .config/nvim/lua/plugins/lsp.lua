@@ -6,7 +6,8 @@ return {
             "mason-org/mason-lspconfig.nvim",
             "folke/lazydev.nvim",
             "saghen/blink.cmp",
-            "folke/neodev.nvim"
+            "folke/neodev.nvim",
+            "b0o/SchemaStore.nvim",
         },
         config = function()
             require("neodev").setup()
@@ -14,6 +15,20 @@ return {
             local lspconfig = require("lspconfig")
             local util      = require("lspconfig.util")
             local caps      = require("blink.cmp").get_lsp_capabilities()
+
+            lspconfig.jsonls.setup({
+                capabilities = caps,
+                settings = {
+                    json = {
+                        schemas = require('schemastore').json.schemas(),
+                        validate = { enable = true },
+                    },
+                },
+                init_options = {
+                    provideFormatter = true,
+                },
+                single_file_support = true,
+            })
 
             lspconfig.vtsls.setup({
                 capabilities        = caps,
@@ -52,7 +67,7 @@ return {
                 workspace = { didChangeWatchedFiles = false }
             })
 
-            local function svelte_on_attach(client, bufnr)
+            local function svelte_on_attach(client)
                 if client.name == "svelte" then
                     client.server_capabilities.documentFormattingProvider = true
                     client.server_capabilities.documentRangeFormattingProvider = true
@@ -99,11 +114,12 @@ return {
 
             require("mason").setup()
             require("mason-lspconfig").setup({
-                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor" },
+                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor", "jsonls" },
                 automatic_enable = false,
             })
 
             --vim.lsp.enable("denols")
+            vim.lsp.enable("jsonls")
             vim.lsp.enable("svelte")
             vim.lsp.enable("vtsls")
             vim.lsp.enable("lua_ls")
@@ -121,6 +137,10 @@ return {
                             -- For Svelte files, only use svelte
                             if vim.bo.filetype == "svelte" then
                                 return client.name == "svelte"
+                            end
+                            -- For JSON files, use jsonls
+                            if vim.bo.filetype == "json" then
+                                return client.name == "jsonls"
                             end
                             -- For other files, use any client that supports formatting
                             return client.supports_method("textDocument/formatting")

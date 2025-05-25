@@ -249,9 +249,9 @@ return {
             quickfile    = { enabled = true },
             scope        = { enabled = true },
             scroll       = {
-                enabled = false,
+                enabled = true,
                 animate = {
-                    duration = { step = 5, total = 50 },
+                    duration = { step = 10, total = 80 },
                     easing = "linear",
                 },
             },
