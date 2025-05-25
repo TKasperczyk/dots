@@ -39,7 +39,7 @@ return {
                         imports = { hosts = { ["https://deno.land"] = true } }
                     },
                 },
-                root_dir            = util.root_pattern("tsconfig.json"),
+                root_dir            = util.root_pattern("tsconfig.json", "svelte.config.js"),
                 single_file_support = false,
             });
             lspconfig.denols.setup({
@@ -88,10 +88,11 @@ return {
                     lint     = true,
                     unstable = true,
                 },
-                filetypes = { "svelte", "typescript", "javascript" },
+                filetypes = { "svelte" },
                 root_dir = util.root_pattern("svelte.config.js"),
                 single_file_support = false,
             })
+
             lspconfig.tailwindcss.setup({
                 capabilities        = caps,
                 init_options        = {
@@ -130,7 +131,7 @@ return {
                 callback = function()
                     vim.lsp.buf.format({
                         filter = function(client)
-                            -- For TypeScript/JavaScript files, only use vtsls
+                            -- For TypeScript/JavaScript files, use vtsls
                             if vim.bo.filetype == "typescript" or vim.bo.filetype == "javascript" then
                                 return client.name == "vtsls"
                             end
