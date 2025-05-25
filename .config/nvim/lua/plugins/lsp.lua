@@ -39,7 +39,14 @@ return {
                         imports = { hosts = { ["https://deno.land"] = true } }
                     },
                 },
-                root_dir            = util.root_pattern("tsconfig.json", "svelte.config.js"),
+                filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
+                root_dir            = function(fname)
+                    -- Don't activate for .svelte.ts files - let Svelte handle them
+                    if fname:match("%.svelte%.ts$") then
+                        return nil
+                    end
+                    return util.root_pattern("tsconfig.json", "svelte.config.js")(fname)
+                end,
                 single_file_support = false,
             });
             lspconfig.denols.setup({
@@ -67,15 +74,20 @@ return {
                 workspace = { didChangeWatchedFiles = false }
             })
 
-            local function svelte_on_attach(client)
+            local function svelte_on_attach(client, bufnr)
                 if client.name == "svelte" then
                     client.server_capabilities.documentFormattingProvider = true
                     client.server_capabilities.documentRangeFormattingProvider = true
+                    
+                    -- Enhanced workspace symbol support
+                    client.server_capabilities.workspaceSymbolProvider = true
+                    client.server_capabilities.definitionProvider = true
+                    
                     vim.api.nvim_create_autocmd("BufWritePost", {
-                        pattern = { "*.js", "*.ts" },
+                        pattern = { "*.js", "*.ts", "*.svelte" },
                         group = vim.api.nvim_create_augroup("svelte_ondidchangetsorjsfile", { clear = true }),
                         callback = function(ctx)
-                            client.notify("$/onDidChangeTsOrJsFile", { uri = ctx.match })
+                            client.notify("$/onDidChangeTsOrJsFile", { uri = ctx.file })
                         end,
                     })
                 end
@@ -85,8 +97,38 @@ return {
                 capabilities = svelte_caps,
                 on_attach = svelte_on_attach,
                 init_options = {
-                    lint     = true,
-                    unstable = true,
+                    configuration = {
+                        svelte = {
+                            plugin = {
+                                typescript = {
+                                    enabled = true,
+                                    diagnostics = { enable = true },
+                                    hover = { enable = true },
+                                    completions = { enable = true },
+                                    definitions = { enable = true },
+                                    codeActions = { enable = true },
+                                    selectionRange = { enable = true },
+                                    rename = { enable = true },
+                                },
+                            },
+                        },
+                    },
+                },
+                settings = {
+                    svelte = {
+                        plugin = {
+                            typescript = {
+                                enabled = true,
+                                diagnostics = { enable = true },
+                                hover = { enable = true },
+                                completions = { enable = true },
+                                definitions = { enable = true },
+                                codeActions = { enable = true },
+                                selectionRange = { enable = true },
+                                rename = { enable = true },
+                            },
+                        },
+                    },
                 },
                 filetypes = { "svelte" },
                 root_dir = util.root_pattern("svelte.config.js"),
@@ -125,6 +167,68 @@ return {
             vim.lsp.enable("vtsls")
             vim.lsp.enable("lua_ls")
             vim.lsp.enable("phpactor")
+
+            -- Custom go-to-definition that finds actual Svelte components
+            local function smart_goto_definition()
+                local word = vim.fn.expand('<cword>')
+                local filename = vim.fn.expand('%:t')
+                local is_svelte_project = vim.fn.findfile("svelte.config.js", ".;") ~= ""
+                
+                if is_svelte_project and filename:match("%.svelte%.ts$") then
+                    -- Get all import lines from the current buffer
+                    local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+                    
+                    for _, line in ipairs(lines) do
+                        -- Look for import statements that import the component under cursor
+                        local pattern = "import%s+" .. word .. "%s+from%s+[\"']([^\"']+%.svelte)[\"']"
+                        local svelte_path = line:match(pattern)
+                        
+                        if svelte_path then
+                            -- Resolve the path relative to current file or using path aliases
+                            local current_dir = vim.fn.expand('%:p:h')
+                            local target_file
+                            
+                            if svelte_path:match("^@") then
+                                -- Handle path aliases like @common
+                                local root = vim.fn.finddir(".git/..", ".;")
+                                if root == "" then root = "." end
+                                
+                                local cmd = string.format("find %s -path '*%s' -type f 2>/dev/null | head -1", 
+                                    root, svelte_path:gsub("@[^/]+/", ""))
+                                local handle = io.popen(cmd)
+                                if handle then
+                                    local result = handle:read("*a")
+                                    handle:close()
+                                    if result and result:match("%S") then
+                                        target_file = result:match("^%s*(.-)%s*$")
+                                    end
+                                end
+                            else
+                                -- Relative path
+                                target_file = vim.fn.resolve(current_dir .. "/" .. svelte_path)
+                            end
+                            
+                            if target_file and vim.fn.filereadable(target_file) == 1 then
+                                vim.cmd("edit " .. target_file)
+                                return
+                            end
+                        end
+                    end
+                end
+                
+                vim.lsp.buf.definition()
+            end
+
+            -- Override gd in remap.lua by creating an autocommand
+            vim.api.nvim_create_autocmd("LspAttach", {
+                callback = function(event)
+                    local bufnr = event.buf
+                    vim.keymap.set("n", "gd", smart_goto_definition, { buffer = bufnr, desc = "Smart LSP Go to definition" })
+                end,
+            })
+
+
+
 
             vim.api.nvim_create_autocmd('BufWritePre', {
                 pattern = "*",
