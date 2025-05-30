@@ -45,7 +45,29 @@ return {
                     if fname:match("%.svelte%.ts$") then
                         return nil
                     end
-                    return util.root_pattern("tsconfig.json", "svelte.config.js")(fname)
+                    -- Don't activate in Deno projects - let denols handle them exclusively
+                    local deno_root = util.root_pattern("deno.json", "deno.jsonc")(fname)
+                    if deno_root then
+                        return nil
+                    end
+                    -- Only activate if we find TypeScript config files but no Deno config
+                    local ts_root = util.root_pattern("tsconfig.json", "jsconfig.json")(fname)
+                    if ts_root then
+                        -- Double check no deno.json in the TypeScript project root
+                        if vim.fn.filereadable(ts_root .. "/deno.json") == 1 or vim.fn.filereadable(ts_root .. "/deno.jsonc") == 1 then
+                            return nil
+                        end
+                        return ts_root
+                    end
+                    -- Fall back to package.json for JavaScript projects without deno
+                    local pkg_root = util.root_pattern("package.json")(fname)
+                    if pkg_root then
+                        if vim.fn.filereadable(pkg_root .. "/deno.json") == 1 or vim.fn.filereadable(pkg_root .. "/deno.jsonc") == 1 then
+                            return nil
+                        end
+                        return pkg_root
+                    end
+                    return nil
                 end,
                 single_file_support = false,
             });
@@ -58,7 +80,10 @@ return {
                         imports = { hosts = { ["https://deno.land"] = true } }
                     },
                 },
-                root_dir            = util.root_pattern("deno.json", "deno.jsonc"),
+                root_dir            = function(fname)
+                    -- Only activate if we find deno.json or deno.jsonc
+                    return util.root_pattern("deno.json", "deno.jsonc")(fname)
+                end,
                 single_file_support = false,
             })
             lspconfig.lua_ls.setup({
@@ -161,7 +186,7 @@ return {
                 automatic_enable = false,
             })
 
-            --vim.lsp.enable("denols")
+            vim.lsp.enable("denols")
             vim.lsp.enable("jsonls")
             vim.lsp.enable("svelte")
             vim.lsp.enable("vtsls")
@@ -223,6 +248,26 @@ return {
             vim.api.nvim_create_autocmd("LspAttach", {
                 callback = function(event)
                     local bufnr = event.buf
+                    local client = vim.lsp.get_client_by_id(event.data.client_id)
+                    
+                    -- Stop vtsls if it attaches to a file in a Deno project
+                    if client and client.name == "vtsls" then
+                        local current_file = vim.api.nvim_buf_get_name(bufnr)
+                        if util.root_pattern("deno.json", "deno.jsonc")(current_file) then
+                            vim.lsp.stop_client(client.id)
+                            return
+                        end
+                    end
+                    
+                    -- Stop denols if it attaches to a file NOT in a Deno project
+                    if client and client.name == "denols" then
+                        local current_file = vim.api.nvim_buf_get_name(bufnr)
+                        if not util.root_pattern("deno.json", "deno.jsonc")(current_file) then
+                            vim.lsp.stop_client(client.id)
+                            return
+                        end
+                    end
+                    
                     vim.keymap.set("n", "gd", smart_goto_definition, { buffer = bufnr, desc = "Smart LSP Go to definition" })
                 end,
             })
@@ -235,9 +280,14 @@ return {
                 callback = function()
                     vim.lsp.buf.format({
                         filter = function(client)
-                            -- For TypeScript/JavaScript files, use vtsls
+                            -- For TypeScript/JavaScript files in Deno projects, use denols
                             if vim.bo.filetype == "typescript" or vim.bo.filetype == "javascript" then
-                                return client.name == "vtsls"
+                                local current_file = vim.api.nvim_buf_get_name(0)
+                                if util.root_pattern("deno.json", "deno.jsonc")(current_file) then
+                                    return client.name == "denols"
+                                else
+                                    return client.name == "vtsls"
+                                end
                             end
                             -- For Svelte files, only use svelte
                             if vim.bo.filetype == "svelte" then
