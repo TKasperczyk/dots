@@ -63,11 +63,13 @@ node() {
   lazy_load_nvm
   node $@
 }
+[[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
 
-export TERM=xterm-256color
+
+export TERM=xterm-kitty
 
 # pnpm
-export PNPM_HOME="/home/luth/.local/share/pnpm"
+export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
@@ -76,3 +78,5 @@ esac
 eval "$(gh copilot alias -- zsh)"
 
 alias vim=nvim
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+. "/home/luthriel/.deno/env"
