@@ -79,4 +79,3 @@ eval "$(gh copilot alias -- zsh)"
 
 alias vim=nvim
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-. "/home/luthriel/.deno/env"
