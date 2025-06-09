@@ -136,6 +136,16 @@ return {
             local root = get_project_root()
             local md   = build_markdown_with_extension_hint(filtered, root)
             vim.fn.setreg("+", md)
+            
+            -- Trigger OSC52 for remote clipboard (similar to how yank works)
+            if vim.env.SSH_TTY or vim.env.SSH_CLIENT or vim.env.SSH_CONNECTION then
+                local function send_osc52(text)
+                    local b64 = vim.fn.system({ "base64", "-w0" }, text)
+                    vim.fn.chansend(vim.v.stderr, "\x1b]52;c;" .. b64 .. "\x07")
+                end
+                send_osc52(md)
+            end
+            
             Snacks.notify.info(("Copied %d file(s) for LLM"):format(#filtered))
         end
 
