@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# where to save
+OUT_DIR="$HOME/Pictures/Screenshots"
+mkdir -p "$OUT_DIR"
+
+# timestamped filenames
+TS="$(date +%Y-%m-%d_%H-%M-%S)"
+PNG="$OUT_DIR/screenshot_${TS}.png"
+JPG="$OUT_DIR/screenshot_${TS}.jpg"
+
+# grab geometry
+GEOM="$(slurp)"
+
+# capture as PNG → save & copy to clipboard
+grim -g "$GEOM" - \
+  | tee "$PNG" \
+  | wl-copy 
+
+# now convert that saved PNG into a JPEG at quality 85
+convert "$PNG" -quality 85 "$JPG"
+
+# notify about both files
+notify-send "📸 Screenshot saved to:
+  • $PNG (clipboard)
+  • $JPG (JPEG, Q=85)"
+
