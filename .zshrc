@@ -13,7 +13,8 @@ fi
 export PATH="$HOME/.local/bin:$PATH"
 export EDITOR="vim"
 
-alias ls='eza --icons=always --classify=always'
+alias ls='eza --icons=always --classify'
+alias ainulindale='TERM=xterm-kitty kitty +kitten ssh 10.0.5.10'
 
 source /usr/share/oh-my-zsh/oh-my-zsh.sh
 source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
@@ -71,7 +72,7 @@ node() {
 [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
 
 
-export TERM=xterm-kitty
+export TERM=xterm-256color
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"
@@ -84,4 +85,3 @@ eval "$(gh copilot alias -- zsh)"
 
 alias vim=nvim
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-. "/home/luthriel/.deno/env"
