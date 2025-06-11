@@ -8,7 +8,7 @@ fi
 export PATH="$HOME/.local/bin:$PATH"
 export EDITOR="vim"
 
-alias ls='eza --icons=always --classify=always'
+alias ls='eza --icons=always --classify'
 alias ainulindale='TERM=xterm-kitty kitty +kitten ssh 10.0.5.10'
 
 source /usr/share/oh-my-zsh/oh-my-zsh.sh
