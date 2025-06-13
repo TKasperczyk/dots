@@ -1,3 +1,6 @@
+vim.opt.exrc             = true -- Enable reading local config files
+vim.opt.secure           = true -- Only run safe commands from local config
+
 vim.g.mapleader          = " "
 vim.g.maplocalleader     = "\\"
 
