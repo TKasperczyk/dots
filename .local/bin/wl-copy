@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# wl-copy wrapper that uses OSC52 in SSH sessions and real wl-copy locally
+# This allows clipboard operations to work both locally and over SSH
+
+# Check if we're in an SSH session
+if [ -n "$SSH_TTY" ] || [ -n "$SSH_CLIENT" ] || [ -n "$SSH_CONNECTION" ]; then
+    # SSH session - use OSC52 protocol
+    # Read all input from stdin
+    input=$(cat)
+    
+    # Base64 encode the input
+    encoded=$(echo -n "$input" | base64 -w 0)
+    
+    # Send OSC52 sequence to stderr (like the nvim implementation)
+    # OSC52 format: ESC ] 52 ; c ; <base64-encoded-content> ESC \
+    printf "\033]52;c;%s\033\\" "$encoded" >&2
+else
+    # Local session - use real wl-copy if available
+    if command -v /usr/bin/wl-copy >/dev/null 2>&1; then
+        /usr/bin/wl-copy "$@"
+    else
+        echo "Error: wl-copy not found in /usr/bin/" >&2
+        exit 1
+    fi
+fi
