@@ -124,7 +124,7 @@ return {
             local allowed = {
                 "lua", "py", "js", "ts", "svelte", "md", "txt", "json",
                 "yaml", "yml", "go", "rs", "java", "html", "css", "sh",
-                "php", "no_extension",
+                "php", "no_extension", "sql"
             }
             local filtered = filter_by_extension(all, allowed)
             if #filtered == 0 then
@@ -136,7 +136,7 @@ return {
             local root = get_project_root()
             local md   = build_markdown_with_extension_hint(filtered, root)
             vim.fn.setreg("+", md)
-            
+
             -- Trigger OSC52 for remote clipboard (similar to how yank works)
             if vim.env.SSH_TTY or vim.env.SSH_CLIENT or vim.env.SSH_CONNECTION then
                 local function send_osc52(text)
@@ -145,7 +145,7 @@ return {
                 end
                 send_osc52(md)
             end
-            
+
             Snacks.notify.info(("Copied %d file(s) for LLM"):format(#filtered))
         end
 
