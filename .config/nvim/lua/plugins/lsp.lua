@@ -31,16 +31,20 @@ return {
             })
 
             lspconfig.vtsls.setup({
-                capabilities        = caps,
-                init_options        = {
+                capabilities         = caps,
+                autoUseWorkspaceTsdk = true,
+                typescript           = {
+                    tsdk = "./node_modules/typescript/lib",
+                },
+                init_options         = {
                     lint     = true,
                     unstable = true,
                     suggest  = {
                         imports = { hosts = { ["https://deno.land"] = true } }
                     },
                 },
-                filetypes = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
-                root_dir            = function(fname)
+                filetypes            = { "javascript", "javascriptreact", "typescript", "typescriptreact" },
+                root_dir             = function(fname)
                     -- Don't activate for .svelte.ts files - let Svelte handle them
                     if fname:match("%.svelte%.ts$") then
                         return nil
@@ -69,7 +73,7 @@ return {
                     end
                     return nil
                 end,
-                single_file_support = false,
+                single_file_support  = false,
             });
             lspconfig.denols.setup({
                 capabilities        = caps,
@@ -103,11 +107,11 @@ return {
                 if client.name == "svelte" then
                     client.server_capabilities.documentFormattingProvider = true
                     client.server_capabilities.documentRangeFormattingProvider = true
-                    
+
                     -- Enhanced workspace symbol support
                     client.server_capabilities.workspaceSymbolProvider = true
                     client.server_capabilities.definitionProvider = true
-                    
+
                     vim.api.nvim_create_autocmd("BufWritePost", {
                         pattern = { "*.js", "*.ts", "*.svelte" },
                         group = vim.api.nvim_create_augroup("svelte_ondidchangetsorjsfile", { clear = true }),
@@ -198,27 +202,27 @@ return {
                 local word = vim.fn.expand('<cword>')
                 local filename = vim.fn.expand('%:t')
                 local is_svelte_project = vim.fn.findfile("svelte.config.js", ".;") ~= ""
-                
+
                 if is_svelte_project and filename:match("%.svelte%.ts$") then
                     -- Get all import lines from the current buffer
                     local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-                    
+
                     for _, line in ipairs(lines) do
                         -- Look for import statements that import the component under cursor
                         local pattern = "import%s+" .. word .. "%s+from%s+[\"']([^\"']+%.svelte)[\"']"
                         local svelte_path = line:match(pattern)
-                        
+
                         if svelte_path then
                             -- Resolve the path relative to current file or using path aliases
                             local current_dir = vim.fn.expand('%:p:h')
                             local target_file
-                            
+
                             if svelte_path:match("^@") then
                                 -- Handle path aliases like @common
                                 local root = vim.fn.finddir(".git/..", ".;")
                                 if root == "" then root = "." end
-                                
-                                local cmd = string.format("find %s -path '*%s' -type f 2>/dev/null | head -1", 
+
+                                local cmd = string.format("find %s -path '*%s' -type f 2>/dev/null | head -1",
                                     root, svelte_path:gsub("@[^/]+/", ""))
                                 local handle = io.popen(cmd)
                                 if handle then
@@ -232,7 +236,7 @@ return {
                                 -- Relative path
                                 target_file = vim.fn.resolve(current_dir .. "/" .. svelte_path)
                             end
-                            
+
                             if target_file and vim.fn.filereadable(target_file) == 1 then
                                 vim.cmd("edit " .. target_file)
                                 return
@@ -240,7 +244,7 @@ return {
                         end
                     end
                 end
-                
+
                 vim.lsp.buf.definition()
             end
 
@@ -249,7 +253,7 @@ return {
                 callback = function(event)
                     local bufnr = event.buf
                     local client = vim.lsp.get_client_by_id(event.data.client_id)
-                    
+
                     -- Stop vtsls if it attaches to a file in a Deno project
                     if client and client.name == "vtsls" then
                         local current_file = vim.api.nvim_buf_get_name(bufnr)
@@ -258,7 +262,7 @@ return {
                             return
                         end
                     end
-                    
+
                     -- Stop denols if it attaches to a file NOT in a Deno project
                     if client and client.name == "denols" then
                         local current_file = vim.api.nvim_buf_get_name(bufnr)
@@ -267,8 +271,9 @@ return {
                             return
                         end
                     end
-                    
-                    vim.keymap.set("n", "gd", smart_goto_definition, { buffer = bufnr, desc = "Smart LSP Go to definition" })
+
+                    vim.keymap.set("n", "gd", smart_goto_definition,
+                        { buffer = bufnr, desc = "Smart LSP Go to definition" })
                 end,
             })
 
