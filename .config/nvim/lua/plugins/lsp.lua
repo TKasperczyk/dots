@@ -184,9 +184,24 @@ return {
                 root_dir = util.root_pattern("composer.json", ".git"),
             })
 
+            lspconfig.basedpyright.setup({
+                capabilities = caps,
+                settings = {
+                    basedpyright = {
+                        analysis = {
+                            typeCheckingMode = "basic",
+                            autoSearchPaths = true,
+                            useLibraryCodeForTypes = true,
+                        },
+                    },
+                },
+                root_dir = util.root_pattern("pyproject.toml", "setup.py", "requirements.txt", ".git"),
+                single_file_support = true,
+            })
+
             require("mason").setup()
             require("mason-lspconfig").setup({
-                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor", "jsonls" },
+                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor", "jsonls", "basedpyright" },
                 automatic_enable = false,
             })
 
@@ -196,6 +211,7 @@ return {
             vim.lsp.enable("vtsls")
             vim.lsp.enable("lua_ls")
             vim.lsp.enable("phpactor")
+            vim.lsp.enable("basedpyright")
 
             -- Custom go-to-definition that finds actual Svelte components
             local function smart_goto_definition()
