@@ -31,7 +31,6 @@ return {
         })
     end,
     config = function()
-        Snacks = require("snacks")
         local Path = require("plenary.path")
         local Snacks = require("snacks")
 
@@ -228,6 +227,12 @@ return {
             input        = { enabled = true },
             picker       = {
                 enabled = true,
+                formatters = {
+                    file = {
+                        -- show up to full window width before truncating
+                        truncate = vim.o.columns,
+                    },
+                },
                 sources = {
                     explorer = {
                         -- these two come from the SO Q to keep focus on the list pane :contentReference[oaicite:1]{index=1}
@@ -261,6 +266,7 @@ return {
             scroll       = {
                 enabled = true,
                 animate = {
+                    enable = false, -- Debugging
                     duration = { step = 10, total = 80 },
                     easing = "linear",
                 },
