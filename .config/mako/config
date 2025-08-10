@@ -1,0 +1,28 @@
+font=monospace 12
+width=450
+max-icon-size=48
+
+background-color=#2a2633ee
+text-color=#f0f0f0
+border-size=3
+border-color=#00e6ffff
+border-radius=14
+padding=12
+margin=24
+
+anchor=top-right
+default-timeout=5000
+ignore-timeout=false
+layer=overlay
+
+[urgency=normal]
+background-color=#2b2735ee
+text-color=#ffffff
+border-color=#00ccffff
+
+[urgency=critical]
+background-color=#4f1f23cc
+text-color=#ffeeee
+border-color=#ff4444ff
+
+format=<span weight='bold'>%s</span>\n%b
