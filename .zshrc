@@ -34,6 +34,7 @@ source /usr/share/oh-my-zsh/oh-my-zsh.sh
 source /usr/share/oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 source /usr/share/oh-my-zsh/lib/key-bindings.zsh
+source /usr/share/oh-my-zsh/plugins/vi-mode/vi-mode.plugin.zsh
 
 ###############################################################################
 #  Prompt (Powerlevel10k)                                                      #
