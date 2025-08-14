@@ -165,12 +165,34 @@ return {
             })
 
             lspconfig.tailwindcss.setup({
-                capabilities        = caps,
-                init_options        = {
-                    lint     = true,
-                    unstable = true,
+                capabilities = caps,
+                filetypes = {
+                    "css",
+                    "scss", 
+                    "sass",
+                    "html",
+                    "javascript",
+                    "javascriptreact", 
+                    "typescript",
+                    "typescriptreact",
+                    "svelte",
+                    "vue"
                 },
-                root_dir            = util.root_pattern("tailwind.config.ts"),
+                root_dir = util.root_pattern(
+                    "tailwind.config.js",
+                    "tailwind.config.cjs", 
+                    "tailwind.config.mjs",
+                    "tailwind.config.ts",
+                    "svelte.config.js"
+                ),
+                settings = {
+                    tailwindCSS = {
+                        classAttributes = { "class", "className", "class:list", "classList", "ngClass" },
+                        includeLanguages = {
+                            svelte = "html"
+                        }
+                    }
+                },
                 single_file_support = false,
             })
             lspconfig.phpactor.setup({
@@ -201,7 +223,7 @@ return {
 
             require("mason").setup()
             require("mason-lspconfig").setup({
-                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor", "jsonls", "basedpyright" },
+                ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor", "jsonls", "basedpyright", "tailwindcss" },
                 automatic_enable = false,
             })
 
@@ -212,6 +234,7 @@ return {
             vim.lsp.enable("lua_ls")
             vim.lsp.enable("phpactor")
             vim.lsp.enable("basedpyright")
+            vim.lsp.enable("tailwindcss")
 
             -- Custom go-to-definition that finds actual Svelte components
             local function smart_goto_definition()
