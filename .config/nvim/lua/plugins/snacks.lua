@@ -122,7 +122,7 @@ return {
             -- filter extensions
             local allowed = {
                 "lua", "py", "js", "ts", "svelte", "md", "txt", "json",
-                "yaml", "yml", "go", "rs", "java", "html", "css", "sh",
+                "yaml", "yml", "go", "rs", "java", "html", "css", "sh", "scss", "yuck",
                 "php", "no_extension", "sql"
             }
             local filtered = filter_by_extension(all, allowed)
