@@ -72,26 +72,6 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 eval "$(zoxide init --cmd cd zsh)"
 
 ###############################################################################
-#  Node Version Manager – lazy-load                                            #
-###############################################################################
-export NVM_DIR="$HOME/.nvm"
-lazy_load_nvm() {
-  unset -f nvm node
-  [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
-}
-nvm()  { lazy_load_nvm; nvm  "$@"; }
-node() { lazy_load_nvm; node "$@"; }
-
-# If you prefer immediate loading instead of lazy, uncomment:
-# [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
-
-###############################################################################
-#  pnpm                                                                        #
-###############################################################################
-export PNPM_HOME="$HOME/.local/share/pnpm"
-[[ ":$PATH:" != *":$PNPM_HOME:"* ]] && export PATH="$PNPM_HOME:$PATH"
-
-###############################################################################
 #  GitHub Copilot CLI                                                          #
 ###############################################################################
 eval "$(gh copilot alias -- zsh)"
@@ -101,3 +81,12 @@ eval "$(gh copilot alias -- zsh)"
 ###############################################################################
 [ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"
 
+
+# pnpm
+export PNPM_HOME="$HOME/.local/share/pnpm"
+export PNPM_HOME="/home/luthriel/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
