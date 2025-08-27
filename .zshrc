@@ -7,13 +7,6 @@ if [ -S "$SOCKET" ] && ! lsof "$SOCKET" >/dev/null 2>&1; then
 fi
 
 ###############################################################################
-#  Powerlevel10k instant prompt (must stay near the very top)                 #
-###############################################################################
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
-###############################################################################
 #  Basic environment                                                           #
 ###############################################################################
 export PATH="$HOME/.local/bin:$PATH"
@@ -26,6 +19,15 @@ export TERM="xterm-256color"
 alias ls='eza --icons=always --classify'
 alias ainulindale='TERM=xterm-kitty kitty +kitten ssh 10.0.5.10'
 alias vim='nvim'
+
+if [[ $TERM_PROGRAM != "WarpTerminal" ]]; then
+
+###############################################################################
+#  Powerlevel10k instant prompt (must stay near the very top)                 #
+###############################################################################
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
 
 ###############################################################################
 #  Oh-My-Zsh & plugins                                                         #
@@ -41,6 +43,8 @@ source /usr/share/oh-my-zsh/plugins/vi-mode/vi-mode.plugin.zsh
 ###############################################################################
 source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh   # run `p10k configure` to edit
+
+fi
 
 ###############################################################################
 #  History                                                                     #
