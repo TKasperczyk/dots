@@ -161,8 +161,8 @@ return {
                     },
                 },
                 filetypes = { "svelte" },
-                root_dir = util.root_pattern("svelte.config.js"),
-                single_file_support = false,
+                root_dir = util.root_pattern("svelte.config.js", "package.json", ".git"),
+                single_file_support = true,
             })
 
             lspconfig.tailwindcss.setup({
@@ -227,15 +227,6 @@ return {
                 ensure_installed = { "lua_ls", "denols", "svelte", "vtsls", "phpactor", "jsonls", "basedpyright", "tailwindcss" },
                 automatic_enable = false,
             })
-
-            vim.lsp.enable("denols")
-            vim.lsp.enable("jsonls")
-            vim.lsp.enable("svelte")
-            vim.lsp.enable("vtsls")
-            vim.lsp.enable("lua_ls")
-            vim.lsp.enable("phpactor")
-            vim.lsp.enable("basedpyright")
-            vim.lsp.enable("tailwindcss")
 
             -- Custom go-to-definition that finds actual Svelte components
             local function smart_goto_definition()
