@@ -14,19 +14,20 @@ return {
         vim.api.nvim_create_autocmd("User", {
             pattern = "VeryLazy",
             callback = function()
+                local snacks = require("snacks")
                 -- Setup some globals for debugging (lazy-loaded)
                 _G.dd = function(...)
-                    Snacks.debug.inspect(...)
+                    snacks.debug.inspect(...)
                 end
                 _G.bt = function()
-                    Snacks.debug.backtrace()
+                    snacks.debug.backtrace()
                 end
                 vim.print = _G.dd -- Override print to use snacks for `:=` command
 
                 -- Create some toggle mappings
-                Snacks.toggle.option("spell", { name = "Spelling" }):map("<leader>us")
-                Snacks.toggle.option("wrap", { name = "Wrap" }):map("<leader>uw")
-                Snacks.toggle.dim():map("<leader>uD")
+                snacks.toggle.option("spell", { name = "Spelling" }):map("<leader>us")
+                snacks.toggle.option("wrap", { name = "Wrap" }):map("<leader>uw")
+                snacks.toggle.dim():map("<leader>uD")
             end,
         })
     end,
@@ -186,9 +187,6 @@ return {
                 -- item field formatters
                 formats = {
                     icon = function(item)
-                        if item.file and item.icon == "file" or item.icon == "directory" then
-                            return M.icon(item.file, item.icon)
-                        end
                         return { item.icon, width = 2, hl = "icon" }
                     end,
                     footer = { "%s", align = "center" },

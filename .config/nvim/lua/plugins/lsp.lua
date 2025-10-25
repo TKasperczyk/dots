@@ -1,6 +1,7 @@
 return {
     {
         "neovim/nvim-lspconfig",
+        version = "v1.2.0", -- Pin to version before nvim 0.11 deprecation
         dependencies = {
             "mason-org/mason.nvim",
             "mason-org/mason-lspconfig.nvim",
