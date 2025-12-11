@@ -80,7 +80,9 @@ fi
 ###############################################################################
 #  GitHub Copilot CLI                                                          #
 ###############################################################################
-eval "$(gh copilot alias -- zsh)"
+if command -v gh &>/dev/null && gh extension list 2>/dev/null | grep -q copilot; then
+  eval "$(gh copilot alias -- zsh)"
+fi
 
 ###############################################################################
 #  nvm bash-completion                                                         #
