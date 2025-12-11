@@ -45,7 +45,7 @@ source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh   # run `p10k configure` to edit
 
 # Host-specific p10k overrides
-case "$(hostname)" in
+case "${HOST:-$(cat /etc/hostname 2>/dev/null)}" in
   p4-workstation)
     # Work VM: orange/yellow theme with different icon
     typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='λ'
