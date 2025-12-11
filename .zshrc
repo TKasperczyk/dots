@@ -44,6 +44,17 @@ source /usr/share/oh-my-zsh/plugins/vi-mode/vi-mode.plugin.zsh
 source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh   # run `p10k configure` to edit
 
+# Host-specific p10k overrides
+case "$(hostname)" in
+  p4-workstation)
+    # Work VM: orange/yellow theme with different icon
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='λ'
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='λ'
+    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=208  # orange
+    typeset -g POWERLEVEL9K_DIR_FOREGROUND=220  # yellow
+    ;;
+esac
+
 fi
 
 ###############################################################################
