@@ -47,10 +47,9 @@ source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
 # Host-specific p10k overrides
 case "${HOST:-$(cat /etc/hostname 2>/dev/null)}" in
   p4-workstation)
-    # Work VM: orange/yellow theme with different icon
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VIINS_CONTENT_EXPANSION='λ'
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_{OK,ERROR}_VICMD_CONTENT_EXPANSION='λ'
-    typeset -g POWERLEVEL9K_PROMPT_CHAR_OK_{VIINS,VICMD,VIVIS,VIOWR}_FOREGROUND=208  # orange
+    # Work VM: orange/yellow theme with λ icon
+    typeset -g POWERLEVEL9K_OS_ICON_CONTENT_EXPANSION='λ'
+    typeset -g POWERLEVEL9K_OS_ICON_FOREGROUND=208  # orange
     typeset -g POWERLEVEL9K_DIR_FOREGROUND=220  # yellow
     ;;
 esac
