@@ -17,7 +17,6 @@ export TERM="xterm-256color"
 #  Aliases                                                                     #
 ###############################################################################
 alias ls='eza --icons=always --classify'
-alias ainulindale='TERM=xterm-kitty kitty +kitten ssh 10.0.5.10'
 alias vim='nvim'
 
 if [[ $TERM_PROGRAM != "WarpTerminal" ]]; then
@@ -113,3 +112,4 @@ esac
 export PATH="$PATH:/home/luthriel/.lmstudio/bin"
 # End of LM Studio CLI section
 
+alias p4='moonlight stream 192.168.122.10 "Desktop" --4K --fps 60 --no-quit-after'
