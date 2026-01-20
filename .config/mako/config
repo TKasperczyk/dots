@@ -14,6 +14,7 @@ anchor=top-right
 default-timeout=5000
 ignore-timeout=false
 layer=overlay
+output=HDMI-A-1
 
 [urgency=normal]
 background-color=#2b2735ee

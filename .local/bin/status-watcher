@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Watch Kira's status and send notifications on changes"""
+
+import json
+import subprocess
+import time
+from pathlib import Path
+
+# Correct path: Kira's home directory
+STATUS_FILE = Path("/home/kira/.kira/status.json")
+CHECK_INTERVAL = 1.0  # Check every second
+
+def read_status():
+    """Read status.json safely"""
+    try:
+        with open(STATUS_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def get_kira_status(data):
+    """Extract Kira's current status"""
+    kira = data.get('kira', {})
+    return {
+        'status': kira.get('status'),
+        'note': kira.get('note', '')
+    }
+
+def send_notification(status, note):
+    """Send persistent mako notification"""
+    title = "Kira"
+    message = status
+    if note:
+        message = f"{status}\n{note}"
+
+    cmd = [
+        'notify-send',
+        '-a', 'kira-status',
+        '-u', 'critical',
+        '-t', '0',  # Persistent (until dismissed)
+        title,
+        message
+    ]
+
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"[{time.strftime('%H:%M:%S')}] Notification: {status}")
+    except subprocess.CalledProcessError as e:
+        print(f"[{time.strftime('%H:%M:%S')}] Failed to send notification: {e}")
+
+def main():
+    print(f"Watching {STATUS_FILE} for Kira status changes...")
+    print("Press Ctrl+C to stop")
+
+    # Initialize with current status (don't notify on startup)
+    prev_status = get_kira_status(read_status())
+    print(f"Initial status: {prev_status['status'] or '(none)'}")
+
+    try:
+        while True:
+            current_data = read_status()
+            current_status = get_kira_status(current_data)
+
+            # Check if status changed (not note, only status itself)
+            if current_status['status'] != prev_status['status']:
+                if current_status['status']:  # Only notify if new status exists
+                    print(f"[{time.strftime('%H:%M:%S')}] Status changed: {prev_status['status']} → {current_status['status']}")
+                    send_notification(current_status['status'], current_status['note'])
+
+                prev_status = current_status
+
+            time.sleep(CHECK_INTERVAL)
+
+    except KeyboardInterrupt:
+        print("\nStopping watcher")
+
+if __name__ == '__main__':
+    main()
