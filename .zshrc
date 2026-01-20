@@ -101,7 +101,7 @@ fi
 
 # pnpm
 export PNPM_HOME="$HOME/.local/share/pnpm"
-export PNPM_HOME="/home/luthriel/.local/share/pnpm"
+export PNPM_HOME="$HOME/.local/share/pnpm"
 case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
@@ -109,7 +109,7 @@ esac
 # pnpm end
 
 # Added by LM Studio CLI (lms)
-export PATH="$PATH:/home/luthriel/.lmstudio/bin"
+export PATH="$PATH:$HOME/.lmstudio/bin"
 # End of LM Studio CLI section
 
 alias p4='moonlight stream 192.168.122.10 "Desktop" --4K --fps 60 --no-quit-after'
