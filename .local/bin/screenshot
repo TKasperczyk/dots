@@ -1,28 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# where to save
 OUT_DIR="$HOME/Pictures/Screenshots"
 mkdir -p "$OUT_DIR"
 
-# timestamped filenames
 TS="$(date +%Y-%m-%d_%H-%M-%S)"
-PNG="$OUT_DIR/screenshot_${TS}.png"
 JPG="$OUT_DIR/screenshot_${TS}.jpg"
 
-# grab geometry
+# Temp file for PNG (browsers need PNG in clipboard)
+TMP_PNG=$(mktemp --suffix=.png)
+trap "rm -f $TMP_PNG" EXIT
+
 GEOM="$(slurp)"
 
-# capture as PNG → save & copy to clipboard
-grim -g "$GEOM" - \
-  | tee "$PNG" \
-  | wl-copy 
+# Capture as PNG
+grim -g "$GEOM" "$TMP_PNG"
 
-# now convert that saved PNG into a JPEG at quality 85
-convert "$PNG" -quality 85 "$JPG"
+# Save as JPG for storage (smaller files, no duplicates)
+convert "$TMP_PNG" -quality 85 "$JPG"
 
-# notify about both files
-notify-send "📸 Screenshot saved to:
-  • $PNG (clipboard)
-  • $JPG (JPEG, Q=85)"
+# Copy PNG to clipboard (Firefox/Zen require image/png)
+wl-copy -t image/png < "$TMP_PNG"
+
+notify-send "📸 Screenshot saved to $JPG (clipboard)"
 

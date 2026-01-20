@@ -74,4 +74,3 @@ url_style                     curly
 open_url_with                 zen
 detect_urls                   yes
 paste_actions                 quote-urls-at-prompt
-map shift+enter send_text all \e\r

@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Status CLI - Tom's side of status.json communication with Kira"""
+
+import json
+import os
+import sys
+import tempfile
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Correct path: Kira's home directory
+STATUS_FILE = Path("/home/kira/.kira/status.json")
+
+def atomic_write_json(path, data):
+    """Atomically write JSON (matches kira-runtime pattern)"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = f"{path}.tmp"
+    with open(tmp_path, 'w') as f:
+        json.dump(data, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.rename(tmp_path, path)
+
+def read_status():
+    """Read status.json, return {} if missing/invalid"""
+    try:
+        with open(STATUS_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+def set_status(status, note=None):
+    """Set Tom's status"""
+    data = read_status()
+    data['tom'] = {
+        'status': status.strip(),
+        'since': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+    }
+    if note:
+        data['tom']['note'] = note.strip()
+
+    atomic_write_json(STATUS_FILE, data)
+    print(f"✓ Status: {status}" + (f" ({note})" if note else ""))
+
+def clear_status():
+    """Clear Tom's status"""
+    data = read_status()
+    if 'tom' in data:
+        del data['tom']
+        atomic_write_json(STATUS_FILE, data)
+        print("✓ Status cleared")
+    else:
+        print("No status to clear")
+
+def format_actor(name, data):
+    """Format a single actor's status"""
+    if not data:
+        return f"{name}: (no status)"
+
+    status = data.get('status', '?')
+    since = data.get('since', '')
+    note = data.get('note', '')
+
+    # Parse timestamp for relative time
+    try:
+        dt = datetime.fromisoformat(since.replace('Z', '+00:00'))
+        now = datetime.now(timezone.utc)
+        delta = now - dt
+
+        if delta.seconds < 60:
+            time_str = "just now"
+        elif delta.seconds < 3600:
+            mins = delta.seconds // 60
+            time_str = f"{mins}m ago"
+        elif delta.days == 0:
+            hours = delta.seconds // 3600
+            time_str = f"{hours}h ago"
+        else:
+            time_str = f"{delta.days}d ago"
+    except:
+        time_str = ""
+
+    result = f"{name}: {status}"
+    if time_str:
+        result += f" ({time_str})"
+    if note:
+        result += f"\n  Note: {note}"
+
+    return result
+
+def show_status(actor=None, json_output=False):
+    """Show status"""
+    data = read_status()
+
+    if json_output:
+        print(json.dumps(data, indent=2))
+        return
+
+    if actor == 'tom':
+        print(format_actor("Tom", data.get('tom')))
+    elif actor == 'kira':
+        print(format_actor("Kira", data.get('kira')))
+    else:
+        # Show both
+        print(format_actor("Tom", data.get('tom')))
+        print(format_actor("Kira", data.get('kira')))
+
+def main():
+    if len(sys.argv) == 1:
+        show_status()
+    elif sys.argv[1] == '--json':
+        show_status(json_output=True)
+    elif sys.argv[1] in ['tom', 'kira']:
+        show_status(actor=sys.argv[1])
+    elif sys.argv[1] == 'set':
+        if len(sys.argv) < 3:
+            print("Usage: status set <status> [note]", file=sys.stderr)
+            sys.exit(1)
+        status = sys.argv[2]
+        note = ' '.join(sys.argv[3:]) if len(sys.argv) > 3 else None
+        set_status(status, note)
+    elif sys.argv[1] == 'clear':
+        clear_status()
+    else:
+        print(f"Unknown command: {sys.argv[1]}", file=sys.stderr)
+        print("Usage: status [tom|kira|--json|set <status> [note]|clear]", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

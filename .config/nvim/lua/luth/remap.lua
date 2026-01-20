@@ -45,3 +45,15 @@ vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, { desc = "LSP Rename" })
 
 vim.keymap.set("v", "<C-Down>", ":m '>+1'<CR>gv=gv")
 vim.keymap.set("v", "<C-Up>", ":m '>-2'<CR>gv=gv")
+
+-- Terminal mode: Ctrl+o to exit to normal mode (navigate output)
+-- Regular Esc still works for zsh-vi-mode command editing
+vim.keymap.set('t', '<C-o>', [[<C-\><C-n>]], { noremap = true })
+
+-- Auto-enter insert mode when opening terminal
+vim.api.nvim_create_autocmd('TermOpen', {
+  pattern = '*',
+  callback = function()
+    vim.cmd('startinsert')
+  end,
+})
