@@ -1,3 +1,6 @@
+package.path = package.path .. ";" .. vim.fn.expand("$HOME") .. "/.luarocks/share/lua/5.1/?/init.lua"
+package.path = package.path .. ";" .. vim.fn.expand("$HOME") .. "/.luarocks/share/lua/5.1/?.lua"
+
 vim.opt.exrc             = true -- Enable reading local config files
 vim.opt.secure           = true -- Only run safe commands from local config
 

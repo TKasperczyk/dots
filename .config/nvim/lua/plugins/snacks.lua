@@ -220,6 +220,7 @@ return {
                 },
             },
             debug        = { enabled = true },
+            image        = { enabled = true },
             explorer     = { enabled = true },
             indent       = { enabled = true },
             input        = { enabled = true },
