@@ -50,6 +50,15 @@ vim.keymap.set("v", "<C-Up>", ":m '>-2'<CR>gv=gv")
 -- Regular Esc still works for zsh-vi-mode command editing
 vim.keymap.set('t', '<C-o>', [[<C-\><C-n>]], { noremap = true })
 
+-- Image gallery
+vim.api.nvim_create_user_command("Gallery", function(opts)
+  require("luth.gallery").open(opts.args ~= "" and opts.args or nil)
+end, { nargs = "?", complete = "dir" })
+
+vim.keymap.set("n", "<leader>gi", function()
+  require("luth.gallery").open()
+end, { desc = "Image Gallery" })
+
 -- Auto-enter insert mode when opening terminal
 vim.api.nvim_create_autocmd('TermOpen', {
   pattern = '*',

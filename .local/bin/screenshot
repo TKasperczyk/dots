@@ -2,25 +2,19 @@
 set -euo pipefail
 
 OUT_DIR="$HOME/Pictures/Screenshots"
-mkdir -p "$OUT_DIR"
-
 TS="$(date +%Y-%m-%d_%H-%M-%S)"
+PNG="$OUT_DIR/satty-${TS}.png"
 JPG="$OUT_DIR/screenshot_${TS}.jpg"
 
-# Temp file for PNG (browsers need PNG in clipboard)
 TMP_PNG=$(mktemp --suffix=.png)
 trap "rm -f $TMP_PNG" EXIT
 
-GEOM="$(slurp)"
+grim -g "$(slurp)" -t ppm - | satty --filename - --output-filename "$PNG"
 
-# Capture as PNG
-grim -g "$GEOM" "$TMP_PNG"
-
-# Save as JPG for storage (smaller files, no duplicates)
-convert "$TMP_PNG" -quality 85 "$JPG"
-
-# Copy PNG to clipboard (Firefox/Zen require image/png)
-wl-copy -t image/png < "$TMP_PNG"
-
-notify-send "📸 Screenshot saved to $JPG (clipboard)"
-
+# If user saved from satty, convert and copy
+if [ -f "$PNG" ]; then
+    convert "$PNG" -quality 85 "$JPG"
+    rm "$PNG"
+    wl-copy -t image/png < <(convert "$JPG" png:-)
+    notify-send "📸 Screenshot saved to $JPG (clipboard)"
+fi
