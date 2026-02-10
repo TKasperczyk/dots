@@ -1,0 +1,10 @@
+[Unit]
+Description=Memory usage alert via mako
+
+[Service]
+ExecStart=%h/.local/bin/mem-alert
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

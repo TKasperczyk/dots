@@ -6,7 +6,16 @@ return {
     keys = {
         { "<leader>ps", function() Snacks.picker.grep() end,        desc = "Grep" },
         { "<leader>pf", function() Snacks.picker.files() end,       desc = "Smart Find Files" },
-        { "<leader>pv", function() Snacks.explorer() end,           desc = "File Explorer" },
+        { "<leader>pv", function()
+            local cwd
+            if vim.bo.buftype == "terminal" then
+                local pid = vim.b.terminal_job_pid
+                if pid then
+                    cwd = vim.uv.fs_readlink("/proc/" .. pid .. "/cwd")
+                end
+            end
+            Snacks.explorer(cwd and { cwd = cwd } or nil)
+        end, desc = "File Explorer" },
         { "<leader>gg", function() Snacks.lazygit() end,            desc = "Lazygit" },
         { "<leader>sd", function() Snacks.picker.diagnostics() end, desc = "Diagnostics" },
     },
