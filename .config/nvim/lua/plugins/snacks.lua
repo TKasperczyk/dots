@@ -219,7 +219,7 @@ return {
                 sections = {
                     {
                         section = "terminal",
-                        cmd = "ascii-image-converter -C -c ~/.config/nvim/header.png",
+                        cmd = "/usr/bin/ascii-image-converter -C -c ~/.config/nvim/header.png",
                         indent = 11,
                         gap = 20,
                         height = 25,
