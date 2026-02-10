@@ -1,0 +1,42 @@
+#!/bin/bash
+# Sends a mako notification when RAM usage exceeds threshold.
+# At critical levels, kills known memory hogs to prevent system freeze.
+
+WARN_THRESHOLD=90
+CRIT_THRESHOLD=98
+CHECK_INTERVAL=1
+WARN_COOLDOWN=300   # seconds before re-alerting at warn level
+CRIT_COOLDOWN=30    # seconds before re-alerting at critical level
+
+EMERGENCY_KILL=(zen-browser lmstudio thunderbird)
+
+last_warn=0
+last_crit=0
+
+while true; do
+    read -r total available < <(awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{print t, a}' /proc/meminfo)
+    usage=$(( (total - available) * 100 / total ))
+    now=$(date +%s)
+    free_gb=$(awk '/MemAvailable/{printf "%.1f GB free", $2/1048576}' /proc/meminfo)
+
+    if (( usage >= CRIT_THRESHOLD && now - last_crit >= CRIT_COOLDOWN )); then
+        killed=()
+        for proc in "${EMERGENCY_KILL[@]}"; do
+            if pkill -f -9 "$proc" 2>/dev/null; then
+                killed+=("$proc")
+            fi
+        done
+        if (( ${#killed[@]} > 0 )); then
+            notify-send -u critical "EMERGENCY: Memory ${usage}%" "Killed: ${killed[*]} ($free_gb)"
+        else
+            notify-send -u critical "EMERGENCY: Memory ${usage}%" "Nothing to kill ($free_gb)"
+        fi
+        last_crit=$now
+        last_warn=$now
+    elif (( usage >= WARN_THRESHOLD && now - last_warn >= WARN_COOLDOWN )); then
+        notify-send -u critical "Memory Alert" "RAM usage at ${usage}% ($free_gb)"
+        last_warn=$now
+    fi
+
+    sleep "$CHECK_INTERVAL"
+done
