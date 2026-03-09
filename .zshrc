@@ -137,3 +137,11 @@ export PATH="$PATH:$HOME/.lmstudio/bin"
 #  Host-local overrides                                                        #
 ###############################################################################
 [[ -f ~/.zshrc.local ]] && source ~/.zshrc.local
+
+# pnpm
+export PNPM_HOME="/home/luthriel/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
