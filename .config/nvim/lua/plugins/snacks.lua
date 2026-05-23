@@ -133,7 +133,7 @@ return {
             local allowed = {
                 "lua", "py", "js", "ts", "svelte", "md", "txt", "json",
                 "yaml", "yml", "go", "rs", "java", "html", "css", "sh", "scss", "yuck",
-                "php", "no_extension", "sql"
+                "php", "no_extension", "sql", "c", "kt", "kts"
             }
             local filtered = filter_by_extension(all, allowed)
             if #filtered == 0 then

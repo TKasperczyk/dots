@@ -64,5 +64,14 @@ vim.api.nvim_create_autocmd('TermOpen', {
   pattern = '*',
   callback = function()
     vim.cmd('startinsert')
+
+    -- Y in visual mode: yank wrapped terminal lines as a single line
+    vim.keymap.set('v', 'Y', function()
+      vim.cmd('normal! y')
+      local text = vim.fn.getreg('"')
+      text = text:gsub('\n$', ''):gsub('\n', ''):gsub('%s+$', '')
+      vim.fn.setreg('"', text)
+      vim.fn.setreg('+', text)
+    end, { buffer = true, desc = 'Yank as single line (unwrap)' })
   end,
 })
