@@ -15,7 +15,9 @@ output HEADLESS-1 resolution 1920x1080 position 0 0
 exec [ -f "$HOME/Pictures/Wallpapers/wallpaper.jpg" ] && swaybg -o HEADLESS-1 -i "$HOME/Pictures/Wallpapers/wallpaper.jpg" -m fill
 
 # --- XWayland ----------------------------------------------------------------
-xwayland disable
+# Enabled (lazy -- Xwayland only spawns when an X client first connects) so X11/Java
+# apps like IB Gateway work. Needs the `xwayland` package present (bootstrap installs it).
+xwayland enable
 
 # --- Environment -------------------------------------------------------------
 # Match the local setup: kitty was kept on XWayland there. With xwayland off

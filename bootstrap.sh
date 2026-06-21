@@ -247,7 +247,7 @@ root_phase() {
 
   log "apt: packages"
   local pkgs="zsh neovim ripgrep fd-find unzip jq build-essential python3 python3-venv python3-pip eza zoxide fontconfig dbus-user-session gh wireguard-tools"
-  [[ "$WITH_GUI" -eq 1 ]] && pkgs+=" sway foot wayvnc bemenu wl-clipboard grim slurp"
+  [[ "$WITH_GUI" -eq 1 ]] && pkgs+=" sway xwayland foot wayvnc bemenu wl-clipboard grim slurp"
   apt-get install -y -qq $pkgs >/dev/null
 
   log "node.js"
