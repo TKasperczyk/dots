@@ -9,7 +9,10 @@ set $super Mod4
 
 # --- Output ------------------------------------------------------------------
 output HEADLESS-1 resolution 1920x1080 position 0 0
-output HEADLESS-1 bg /home/luth/Pictures/Wallpapers/wallpaper.jpg fill
+# Wallpaper via swaybg through a shell (sway's `output bg` doesn't expand $HOME, and
+# errors if the file is missing). The `exec` runs via /bin/sh, so $HOME resolves per-user
+# and the `[ -f ]` test skips swaybg entirely when there's no wallpaper -> no error.
+exec [ -f "$HOME/Pictures/Wallpapers/wallpaper.jpg" ] && swaybg -o HEADLESS-1 -i "$HOME/Pictures/Wallpapers/wallpaper.jpg" -m fill
 
 # --- XWayland ----------------------------------------------------------------
 xwayland disable
