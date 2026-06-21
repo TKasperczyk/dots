@@ -65,6 +65,10 @@ vim.api.nvim_create_autocmd('TermOpen', {
   callback = function()
     vim.cmd('startinsert')
 
+    -- keep line numbers in terminals (nvim 0.11's built-in nvim.terminal default strips them)
+    vim.wo.number = true
+    vim.wo.relativenumber = true
+
     -- Y in visual mode: yank wrapped terminal lines as a single line
     vim.keymap.set('v', 'Y', function()
       vim.cmd('normal! y')
