@@ -71,6 +71,14 @@ use_relative_paths=false
 address=$WAYVNC_BIND
 enable_auth=false
 EOF
+  # When binding a specific interface IP (e.g. a WG address), that interface may
+  # come up after this user service -- wait for the address before binding.
+  # Loopback / all-interfaces are always available, so skip the wait for those.
+  local addrwait=""
+  case "$WAYVNC_BIND" in
+    127.0.0.1|0.0.0.0|::) ;;
+    *) addrwait="ExecStartPre=/bin/sh -c 'i=0; until ip -o addr show | grep -qw $WAYVNC_BIND || [ \$i -ge 60 ]; do sleep 0.5; i=\$((i+1)); done'" ;;
+  esac
   cat > "$HOME/.config/systemd/user/wayvnc-headless.service" <<EOF
 [Unit]
 Description=wayvnc on $WAYVNC_BIND:5901 attached to $USER_NAME headless Sway
@@ -84,6 +92,7 @@ Type=simple
 Environment=XDG_RUNTIME_DIR=/run/user/$(id -u)
 Environment=WAYLAND_DISPLAY=wayland-1
 ExecStartPre=/bin/sh -c 'i=0; until [ -S "\$XDG_RUNTIME_DIR/\$WAYLAND_DISPLAY" ] || [ \$i -ge 30 ]; do sleep 0.5; i=\$((i+1)); done'
+$addrwait
 ExecStart=/usr/bin/wayvnc -k pl $WAYVNC_BIND 5901
 Restart=always
 RestartSec=2
