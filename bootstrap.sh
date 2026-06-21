@@ -30,6 +30,7 @@ WG_SERVER_PUBKEY=""              # your WG server's public key (required with --
 WG_ALLOWED_IPS=""                # e.g. 10.0.0.0/24 (required with --with-wg)
 WITH_MEMORY=0
 MEMORY_EMBEDDING_URL=""          # e.g. http://embed-host:1234/v1 (required with --with-memory)
+MEMORY_EMBEDDING_MODEL=""        # optional; set if your embedding server names the model differently
 WITH_CODEX_SWARM=0
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; }
@@ -46,8 +47,9 @@ while [[ $# -gt 0 ]]; do
     --wg-server-pubkey) WG_SERVER_PUBKEY="$2"; shift 2;;
     --wg-allowed-ips)   WG_ALLOWED_IPS="$2"; shift 2;;
     --with-memory)          WITH_MEMORY=1; shift;;
-    --memory-embedding-url) MEMORY_EMBEDDING_URL="$2"; WITH_MEMORY=1; shift 2;;
-    --with-codex-swarm)     WITH_CODEX_SWARM=1; shift;;
+    --memory-embedding-url)   MEMORY_EMBEDDING_URL="$2"; WITH_MEMORY=1; shift 2;;
+    --memory-embedding-model) MEMORY_EMBEDDING_MODEL="$2"; shift 2;;
+    --with-codex-swarm)       WITH_CODEX_SWARM=1; shift;;
     -h|--help)      usage; exit 0;;
     *) echo "unknown arg: $1" >&2; exit 1;;
   esac
@@ -119,9 +121,9 @@ setup_memory() {  # clone + build claude-memory; configure hooks/env/MCP (embedd
   ( cd "$dir" && pnpm install && pnpm exec tsc ) || { echo "  claude-memory build FAILED -- skipping config"; return; }
   local s="$HOME/.claude/settings.json" pre="node $dir/dist/hooks/pre-prompt.js" post="node $dir/dist/hooks/post-session.js"
   [[ -f "$s" ]] || echo '{}' > "$s"
-  jq --arg url "$MEMORY_EMBEDDING_URL" --arg pre "$pre" --arg post "$post" '
+  jq --arg url "$MEMORY_EMBEDDING_URL" --arg model "$MEMORY_EMBEDDING_MODEL" --arg pre "$pre" --arg post "$post" '
       .autoMemoryEnabled = false
-    | .env = ((.env // {}) + {CC_EMBEDDINGS_URL: $url})
+    | .env = ((.env // {}) + {CC_EMBEDDINGS_URL: $url} + (if $model != "" then {CC_EMBEDDINGS_MODEL: $model} else {} end))
     | .hooks.UserPromptSubmit = [{hooks:[{type:"command", command:$pre,  timeout:15}]}]
     | .hooks.PreCompact       = [{hooks:[{type:"command", command:$post, timeout:15}]}]
     | .hooks.SessionEnd       = [{hooks:[{type:"command", command:$post, timeout:15}]}]
@@ -274,7 +276,7 @@ root_phase() {
   sudo --preserve-env=GH_TOKEN -H -u "$USER_NAME" bash -c "
     set -euo pipefail
     $(declare -f log install_font setup_wayvnc_local setup_codex_swarm setup_memory user_phase)
-    DOTS_REPO='$DOTS_REPO' USER_NAME='$USER_NAME' WITH_GUI='$WITH_GUI' WAYVNC_BIND='$WAYVNC_BIND' WITH_MEMORY='$WITH_MEMORY' MEMORY_EMBEDDING_URL='$MEMORY_EMBEDDING_URL' WITH_CODEX_SWARM='$WITH_CODEX_SWARM' user_phase
+    DOTS_REPO='$DOTS_REPO' USER_NAME='$USER_NAME' WITH_GUI='$WITH_GUI' WAYVNC_BIND='$WAYVNC_BIND' WITH_MEMORY='$WITH_MEMORY' MEMORY_EMBEDDING_URL='$MEMORY_EMBEDDING_URL' MEMORY_EMBEDDING_MODEL='$MEMORY_EMBEDDING_MODEL' WITH_CODEX_SWARM='$WITH_CODEX_SWARM' user_phase
   "
   log "done -- box provisioned"
 }
