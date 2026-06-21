@@ -149,6 +149,12 @@ user_phase() {
   ln -sfn "$REPO/.local/bin/zsh-plugins-setup"     "$HOME/.local/bin/zsh-plugins-setup"
   ln -sfn "$REPO/.claude/CLAUDE.md"                "$HOME/.claude/CLAUDE.md"
   ln -sfn "$REPO/.codex/AGENTS.md"                 "$HOME/.codex/AGENTS.md"
+  ln -sfn "$REPO/.claude/statusline-command.sh"    "$HOME/.claude/statusline-command.sh"
+  mkdir -p "$HOME/.claude/scripts"
+  ln -sfn "$REPO/.claude/scripts/claude_usage.py"  "$HOME/.claude/scripts/claude_usage.py"
+  # statusLine entry in settings.json (per-host; points at the symlinked script)
+  local sj="$HOME/.claude/settings.json"; [[ -f "$sj" ]] || echo '{}' > "$sj"
+  jq --arg cmd "$HOME/.claude/statusline-command.sh" '.statusLine={type:"command",command:$cmd}' "$sj" > "$sj.tmp" && mv "$sj.tmp" "$sj"
   if [[ "$WITH_GUI" -eq 1 ]]; then
     ln -sfn "$REPO/.config/sway"                                   "$HOME/.config/sway"
     ln -sfn "$REPO/.config/foot"                                   "$HOME/.config/foot"
