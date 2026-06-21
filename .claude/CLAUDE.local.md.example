@@ -1,0 +1,23 @@
+# Host-specific / personal overrides -- TEMPLATE
+
+Copy this to `~/.claude/CLAUDE.local.md` and fill in machine-local context.
+
+The shared `~/.claude/CLAUDE.md` (symlinked from this repo) imports that file via
+`@~/.claude/CLAUDE.local.md`. The local file is **not** tracked here (see `.gitignore`),
+and a missing import is silently ignored -- so on a fresh clone or a different host,
+only the shared instructions apply until you create your own local file.
+
+Put here anything that must not go to the public repo:
+- personal / professional context, identity, credentials
+- infrastructure topology, hostnames, IPs, private paths
+- host-specific skill routing and trigger words
+
+## Example skeleton
+
+```
+# This Machine
+<hostname>, role, quirks.
+
+# Host-specific skills
+When the user mentions <trigger>, use the `<your-skill>` skill.
+```
