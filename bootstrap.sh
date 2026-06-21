@@ -234,8 +234,8 @@ root_phase() {
   apt-get install -y -qq $pkgs >/dev/null
 
   log "node.js"
-  if [[ "$WITH_MEMORY" -eq 1 ]]; then   # claude-memory needs Node >=22.5 (node:sqlite); Debian ships 20
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - >/dev/null 2>&1
+  if [[ "$WITH_MEMORY" -eq 1 ]]; then   # claude-memory + pnpm need node:sqlite (Node >=22.5); Debian ships 20
+    [[ -f /etc/apt/sources.list.d/nodesource.list ]] || curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
     apt-get install -y -qq nodejs >/dev/null   # NodeSource 24 (bundles npm)
     npm install -g pnpm >/dev/null 2>&1 || true
   else
