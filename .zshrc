@@ -29,10 +29,34 @@ alias vim='nvim'
 ###############################################################################
 #  Oh-My-Zsh & plugins                                                         #
 ###############################################################################
-source /usr/share/oh-my-zsh/oh-my-zsh.sh
-source /usr/share/oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+# Plugins resolve from a user-local dir (managed by `zsh-plugins-setup`), with a
+# fallback to system locations (Arch /usr/share, Debian) so this loads unmodified
+# on any distro and degrades to a plain shell if a plugin is absent.
+ZSH_PLUGIN_DIR="${ZSH_PLUGIN_DIR:-$HOME/.local/share/zsh}"
+_src_first() {  # source the first readable path; return 1 if none exist
+  local f
+  for f in "$@"; do
+    [[ -r "$f" ]] && { source "$f"; return 0; }
+  done
+  return 1
+}
+
+export ZSH="${ZSH:-$ZSH_PLUGIN_DIR/oh-my-zsh}"
+[[ -d "$ZSH" ]] || ZSH=/usr/share/oh-my-zsh   # Arch system fallback
+export ZSH_CACHE_DIR="${ZSH_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh}"
+export DISABLE_AUTO_UPDATE=true DISABLE_UPDATE_PROMPT=true
+_src_first "$ZSH/oh-my-zsh.sh"
+
+_src_first \
+  "$ZSH_PLUGIN_DIR/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+  /usr/share/oh-my-zsh/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
-source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+_src_first \
+  "$ZSH_PLUGIN_DIR/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" \
+  /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 ###############################################################################
 #  Edit command in nvim with Ctrl+e                                            #
@@ -46,7 +70,10 @@ bindkey '^e' edit-command-line
 ###############################################################################
 function zvm_after_init() {
   # History prefix search (type partial cmd → Esc → k/j to filter)
-  source /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh
+  _src_first \
+    "$ZSH_PLUGIN_DIR/zsh-history-substring-search/zsh-history-substring-search.zsh" \
+    /usr/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh \
+    /usr/share/zsh-history-substring-search/zsh-history-substring-search.zsh
   HISTORY_SUBSTRING_SEARCH_PREFIXED=1
   # Wrap history search to clear autosuggestion ghost text first.
   # history-substring-search loads after zsh-autosuggestions, so its widgets
@@ -74,12 +101,16 @@ function zvm_after_init() {
   # Re-bind Ctrl+E for edit-command-line (vi-mode overrides it)
   bindkey '^e' edit-command-line
 }
-source /usr/share/zsh/plugins/zsh-vi-mode/zsh-vi-mode.plugin.zsh
+_src_first \
+  "$ZSH_PLUGIN_DIR/zsh-vi-mode/zsh-vi-mode.plugin.zsh" \
+  /usr/share/zsh/plugins/zsh-vi-mode/zsh-vi-mode.plugin.zsh
 
 ###############################################################################
 #  Prompt (Powerlevel10k)                                                      #
 ###############################################################################
-source /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
+_src_first \
+  "$ZSH_PLUGIN_DIR/powerlevel10k/powerlevel10k.zsh-theme" \
+  /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh   # run `p10k configure` to edit
 
 # Host-specific p10k overrides

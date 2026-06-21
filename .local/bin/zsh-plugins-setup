@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Populate the user-local zsh plugin/theme dir that .zshrc resolves from.
+# Idempotent, no sudo. Required on distros that don't package these (e.g. Debian);
+# optional on distros that do (e.g. Arch -- .zshrc falls back to /usr/share).
+set -euo pipefail
+DIR="${ZSH_PLUGIN_DIR:-$HOME/.local/share/zsh}"
+mkdir -p "$DIR"
+
+clone() {  # clone <url> <dest-name>
+  local dest="$DIR/$2"
+  if [[ -d "$dest/.git" ]]; then
+    echo "  exists  $2"
+  else
+    git clone --depth 1 -q "$1" "$dest" && echo "  cloned  $2"
+  fi
+}
+
+echo "zsh plugins -> $DIR"
+clone https://github.com/ohmyzsh/ohmyzsh                        oh-my-zsh
+clone https://github.com/zsh-users/zsh-autosuggestions          zsh-autosuggestions
+clone https://github.com/zsh-users/zsh-syntax-highlighting      zsh-syntax-highlighting
+clone https://github.com/zsh-users/zsh-history-substring-search zsh-history-substring-search
+clone https://github.com/jeffreytse/zsh-vi-mode                 zsh-vi-mode
+clone https://github.com/romkatv/powerlevel10k                  powerlevel10k
+echo "done"
