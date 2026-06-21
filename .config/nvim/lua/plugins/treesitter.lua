@@ -1,5 +1,6 @@
 local M = {
     "nvim-treesitter/nvim-treesitter",
+    branch = "master",  -- classic API (configs.setup); the default `main` branch is a rewrite needing nvim 0.11+
     build = function()
         require("nvim-treesitter.install").update({ with_sync = true })()
     end,
