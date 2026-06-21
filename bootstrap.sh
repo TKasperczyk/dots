@@ -229,10 +229,18 @@ root_phase() {
   fi
 
   log "apt: packages"
-  local pkgs="zsh neovim ripgrep fd-find unzip jq build-essential python3 nodejs npm eza zoxide fontconfig dbus-user-session gh wireguard-tools"
+  local pkgs="zsh neovim ripgrep fd-find unzip jq build-essential python3 eza zoxide fontconfig dbus-user-session gh wireguard-tools"
   [[ "$WITH_GUI" -eq 1 ]] && pkgs+=" sway foot wayvnc bemenu wl-clipboard grim slurp"
   apt-get install -y -qq $pkgs >/dev/null
-  [[ "$WITH_MEMORY" -eq 1 ]] && { log "pnpm (claude-memory build)"; npm install -g pnpm >/dev/null 2>&1 || true; }
+
+  log "node.js"
+  if [[ "$WITH_MEMORY" -eq 1 ]]; then   # claude-memory needs Node >=22.5 (node:sqlite); Debian ships 20
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - >/dev/null 2>&1
+    apt-get install -y -qq nodejs >/dev/null   # NodeSource 24 (bundles npm)
+    npm install -g pnpm >/dev/null 2>&1 || true
+  else
+    apt-get install -y -qq nodejs npm >/dev/null   # Debian Node 20 (fine without claude-memory)
+  fi
 
   log "user: $USER_NAME"
   id "$USER_NAME" &>/dev/null || useradd -m -u 1000 -s /usr/bin/zsh "$USER_NAME"
