@@ -1,0 +1,16 @@
+[Unit]
+Description=wayvnc on 0.0.0.0:5901 attached to luth headless Sway
+After=sway-headless.service
+Requires=sway-headless.service
+
+[Service]
+Type=simple
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=WAYLAND_DISPLAY=wayland-1
+ExecStartPre=/bin/sh -c 'i=0; until [ -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ] || [ $i -ge 30 ]; do sleep 0.5; i=$((i+1)); done'
+ExecStart=/usr/bin/wayvnc -k pl 0.0.0.0 5901
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

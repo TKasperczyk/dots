@@ -1,0 +1,3 @@
+# wayvnc private keys + cleartext-password backup live in the real ~/.config/wayvnc dir -- never publish
+*.pem
+config.bak

@@ -1,0 +1,117 @@
+# Headless sway for luth -- mirrors local Hyprland keybind workflow.
+# Started by sway-headless.service with --backend=headless, pixman renderer.
+# Only luth interacts with this; Kira's session stays untouched on tty1.
+
+# --- Modifier setup ----------------------------------------------------------
+set $mod Mod1
+set $smod Mod1+Shift
+set $super Mod4
+
+# --- Output ------------------------------------------------------------------
+output HEADLESS-1 resolution 1920x1080 position 0 0
+output HEADLESS-1 bg /home/luth/Pictures/Wallpapers/wallpaper.jpg fill
+
+# --- XWayland ----------------------------------------------------------------
+xwayland disable
+
+# --- Environment -------------------------------------------------------------
+# Match the local setup: kitty was kept on XWayland there. With xwayland off
+# here, kitty will run native Wayland anyway, so the var is harmless.
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
+
+# --- Input -------------------------------------------------------------------
+input * {
+    xkb_layout pl,us
+    xkb_options grp:alt_shift_toggle
+    accel_profile flat
+    pointer_accel 0
+}
+
+# --- Visual ------------------------------------------------------------------
+# 3px border, no title bar -- matches Hyprland general.border_size=3
+default_border pixel 3
+default_floating_border pixel 3
+
+# Colors: sway accepts <border> <bg> <text> <indicator> <child_border>
+# Hyprland active gradient was cyan->green 45deg; sway picks one color -- using cyan endpoint.
+# Format AARRGGBB in Hyprland (33ccffee) -> RRGGBBAA in sway (33ccffee)
+client.focused          #33ccffee #33ccffee #ffffff #00ff99ee #33ccffee
+client.focused_inactive #595959aa #595959aa #cccccc #595959aa #595959aa
+client.unfocused        #595959aa #595959aa #888888 #595959aa #595959aa
+client.urgent           #ff5555ee #ff5555ee #ffffff #ff5555ee #ff5555ee
+
+gaps inner 5
+gaps outer 10
+# Hyprland used hide_edge_borders only at screen edges via workspace rules; sway has it global. Off so borders are visible.
+hide_edge_borders none
+focus_follows_mouse no
+mouse_warping none
+
+# Smart borders/gaps: don't draw a border on lone window in workspace (closer to Hyprland feel)
+smart_borders off
+smart_gaps off
+
+# --- Mouse window control (Hyprland: bindm = ALT,mouse:272/273) --------------
+floating_modifier $mod normal
+
+# --- Window control ----------------------------------------------------------
+bindsym $mod+f       fullscreen toggle
+bindsym $super+h     layout toggle split
+bindsym $smod+v      floating toggle
+bindsym $smod+t      sticky toggle
+bindsym $smod+q      kill
+bindsym $smod+e      exit
+bindsym $mod+Return  exec foot
+bindsym $super+Return  exec foot
+bindsym $mod+d       exec bemenu-run
+
+# --- Focus (Hyprland: ALT+h/j/k/l movefocus l/d/u/r) -------------------------
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+
+# --- Workspaces (ALT+1-0 switch, ALTSHIFT+1-0 move) --------------------------
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+7 workspace number 7
+bindsym $mod+8 workspace number 8
+bindsym $mod+9 workspace number 9
+bindsym $mod+0 workspace number 10
+
+bindsym $smod+1 move container to workspace number 1
+bindsym $smod+2 move container to workspace number 2
+bindsym $smod+3 move container to workspace number 3
+bindsym $smod+4 move container to workspace number 4
+bindsym $smod+5 move container to workspace number 5
+bindsym $smod+6 move container to workspace number 6
+bindsym $smod+7 move container to workspace number 7
+bindsym $smod+8 move container to workspace number 8
+bindsym $smod+9 move container to workspace number 9
+bindsym $smod+0 move container to workspace number 10
+
+# --- Move submap (Hyprland: ALTSHIFT+K -> arrows move active by 30px) --------
+mode "move" {
+    bindsym Left  move left 30px
+    bindsym Right move right 30px
+    bindsym Up    move up 30px
+    bindsym Down  move down 30px
+    bindsym Escape mode "default"
+    bindsym Return mode "default"
+}
+bindsym $smod+k mode "move"
+
+# --- Resize submap (Hyprland: ALT+R -> arrows resize by 20px) ----------------
+mode "resize" {
+    bindsym Left  resize shrink width 20px
+    bindsym Right resize grow   width 20px
+    bindsym Up    resize shrink height 20px
+    bindsym Down  resize grow   height 20px
+    bindsym Escape mode "default"
+    bindsym Return mode "default"
+}
+bindsym $mod+r mode "resize"
