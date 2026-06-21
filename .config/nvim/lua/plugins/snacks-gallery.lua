@@ -1,5 +1,5 @@
 return {
-  dir = "~/Programming/snacks-gallery.nvim",
+  "TKasperczyk/snacks-gallery.nvim",
   dependencies = { "folke/snacks.nvim" },
   opts = {},
 }
