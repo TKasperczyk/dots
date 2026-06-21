@@ -9,7 +9,7 @@
 #
 # What it does NOT do (per-host / out-of-band, by design):
 #   - create the server / cloud firewall (do that via the Hetzner API or Terraform)
-#   - the WireGuard SERVER side on Hytta + ivory allow rule (it prints the commands)
+#   - the WireGuard SERVER side (peer registration + firewall) -- it prints the pubkey
 #   - interactive CC / Codex auth (gh is handled if GH_TOKEN is provided)
 #   - ~/.claude/CLAUDE.local.md (per-host context stays local)
 set -euo pipefail
@@ -20,10 +20,10 @@ USER_NAME="quant"
 WITH_GUI=1                       # headless sway + foot + wayvnc + fonts
 WAYVNC_BIND="127.0.0.1"          # 127.0.0.1 (public box, SSH-tunnel) or 0.0.0.0 (LAN)
 WITH_WG=0
-WG_ADDRESS=""                    # e.g. 10.0.6.21  (required with --with-wg)
-WG_ENDPOINT="hytta.tomaszkasperczyk.name:51821"
-WG_SERVER_PUBKEY="D0AxqgmsdEboCxNjKkuhLcQ0L6eCCY57syW+CP2S3mc="
-WG_ALLOWED_IPS="10.0.6.0/24,10.11.12.0/24"
+WG_ADDRESS=""                    # this peer's VPN address, e.g. 10.10.0.5 (required with --with-wg)
+WG_ENDPOINT=""                   # host:port of your WG server (required with --with-wg)
+WG_SERVER_PUBKEY=""              # your WG server's public key (required with --with-wg)
+WG_ALLOWED_IPS=""                # e.g. 10.0.0.0/24 (required with --with-wg)
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -35,7 +35,9 @@ while [[ $# -gt 0 ]]; do
     --wayvnc-bind)  WAYVNC_BIND="$2"; shift 2;;
     --with-wg)      WITH_WG=1; shift;;
     --wg-address)   WG_ADDRESS="$2"; WITH_WG=1; shift 2;;
-    --wg-endpoint)  WG_ENDPOINT="$2"; shift 2;;
+    --wg-endpoint)      WG_ENDPOINT="$2"; shift 2;;
+    --wg-server-pubkey) WG_SERVER_PUBKEY="$2"; shift 2;;
+    --wg-allowed-ips)   WG_ALLOWED_IPS="$2"; shift 2;;
     -h|--help)      usage; exit 0;;
     *) echo "unknown arg: $1" >&2; exit 1;;
   esac
@@ -134,7 +136,12 @@ user_phase() {
 
 # ---- WireGuard (root; client only -- server side is manual) ---------------
 setup_wg_root() {
-  if [[ -z "$WG_ADDRESS" ]]; then echo "  --with-wg needs --wg-address; skipping"; return; fi
+  local missing=()
+  [[ -z "$WG_ADDRESS" ]]       && missing+=(--wg-address)
+  [[ -z "$WG_ENDPOINT" ]]      && missing+=(--wg-endpoint)
+  [[ -z "$WG_SERVER_PUBKEY" ]] && missing+=(--wg-server-pubkey)
+  [[ -z "$WG_ALLOWED_IPS" ]]   && missing+=(--wg-allowed-ips)
+  if (( ${#missing[@]} )); then echo "  --with-wg needs: ${missing[*]} -- skipping WG"; return; fi
   umask 077; mkdir -p /etc/wireguard
   [[ -f /etc/wireguard/wg-home.key ]] || wg genkey > /etc/wireguard/wg-home.key
   local priv pub; priv=$(cat /etc/wireguard/wg-home.key); pub=$(wg pubkey < /etc/wireguard/wg-home.key)
@@ -154,10 +161,10 @@ EOF
   systemctl enable --now wg-quick@wg-home || true
   cat <<EOF
 
-  >>> WireGuard client up at $WG_ADDRESS -- won't handshake until you add it on Hytta:
-        ssh hytta@10.0.6.1 "sudo wg set wg-home peer $pub allowed-ips $WG_ADDRESS/32"
-      then persist the [Peer] block in /etc/wireguard/home-vpn/wg-home.conf, add any
-      containment FORWARD rules, and (if the box needs LMS) the ivory INPUT allow.
+  >>> WireGuard client up at $WG_ADDRESS. It won't handshake until you register
+      this peer on your WG server (with AllowedIPs $WG_ADDRESS/32):
+        $pub
+      Then add any per-peer firewall / containment rules on the server side.
 EOF
 }
 
