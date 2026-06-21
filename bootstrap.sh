@@ -12,6 +12,10 @@
 #   - the WireGuard SERVER side (peer registration + firewall) -- it prints the pubkey
 #   - interactive CC / Codex auth (gh is handled if GH_TOKEN is provided)
 #   - ~/.claude/CLAUDE.local.md (per-host context stays local)
+#
+# Optional add-ons (off by default): --with-codex-swarm, and --with-memory
+# --memory-embedding-url <url>. claude-memory only FUNCTIONS if the box can reach
+# that URL -- for a VPS that means WG up + a server-side allow to the embed host.
 set -euo pipefail
 
 # ---- defaults -------------------------------------------------------------
@@ -24,6 +28,9 @@ WG_ADDRESS=""                    # this peer's VPN address, e.g. 10.10.0.5 (requ
 WG_ENDPOINT=""                   # host:port of your WG server (required with --with-wg)
 WG_SERVER_PUBKEY=""              # your WG server's public key (required with --with-wg)
 WG_ALLOWED_IPS=""                # e.g. 10.0.0.0/24 (required with --with-wg)
+WITH_MEMORY=0
+MEMORY_EMBEDDING_URL=""          # e.g. http://embed-host:1234/v1 (required with --with-memory)
+WITH_CODEX_SWARM=0
 
 usage() { grep '^#' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -38,6 +45,9 @@ while [[ $# -gt 0 ]]; do
     --wg-endpoint)      WG_ENDPOINT="$2"; shift 2;;
     --wg-server-pubkey) WG_SERVER_PUBKEY="$2"; shift 2;;
     --wg-allowed-ips)   WG_ALLOWED_IPS="$2"; shift 2;;
+    --with-memory)          WITH_MEMORY=1; shift;;
+    --memory-embedding-url) MEMORY_EMBEDDING_URL="$2"; WITH_MEMORY=1; shift 2;;
+    --with-codex-swarm)     WITH_CODEX_SWARM=1; shift;;
     -h|--help)      usage; exit 0;;
     *) echo "unknown arg: $1" >&2; exit 1;;
   esac
@@ -81,6 +91,36 @@ RestartSec=2
 [Install]
 WantedBy=default.target
 EOF
+}
+
+setup_codex_swarm() {  # uv + register the codex-mcp-swarm MCP (PyPI package, run via uvx)
+  [[ -x "$HOME/.local/bin/uv" ]] || curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1
+  local cc="$HOME/.local/bin/claude"
+  "$cc" mcp remove codex-swarm -s user >/dev/null 2>&1 || true
+  "$cc" mcp add codex-swarm -s user -- uvx --upgrade codex-mcp-swarm \
+    -c model=gpt-5.5 -c reasoning_effort=xhigh -c approval_policy=never \
+    -c sandbox_mode=danger-full-access --skip-git-repo-check
+  echo "  codex-swarm registered (uv + MCP)"
+}
+
+setup_memory() {  # clone + build claude-memory; configure hooks/env/MCP (embeddings -> your server)
+  [[ -z "$MEMORY_EMBEDDING_URL" ]] && { echo "  --with-memory needs --memory-embedding-url -- skipping"; return; }
+  local dir="$HOME/Programming/claude-memory"
+  [[ -d "$dir/.git" ]] || git clone -q https://github.com/TKasperczyk/claude-memory.git "$dir"
+  ( cd "$dir" && pnpm install && pnpm exec tsc ) || { echo "  claude-memory build FAILED -- skipping config"; return; }
+  local s="$HOME/.claude/settings.json" pre="node $dir/dist/hooks/pre-prompt.js" post="node $dir/dist/hooks/post-session.js"
+  [[ -f "$s" ]] || echo '{}' > "$s"
+  jq --arg url "$MEMORY_EMBEDDING_URL" --arg pre "$pre" --arg post "$post" '
+      .autoMemoryEnabled = false
+    | .env = ((.env // {}) + {CC_EMBEDDINGS_URL: $url})
+    | .hooks.UserPromptSubmit = [{hooks:[{type:"command", command:$pre,  timeout:15}]}]
+    | .hooks.PreCompact       = [{hooks:[{type:"command", command:$post, timeout:15}]}]
+    | .hooks.SessionEnd       = [{hooks:[{type:"command", command:$post, timeout:15}]}]
+  ' "$s" > "$s.tmp" && mv "$s.tmp" "$s"
+  local cc="$HOME/.local/bin/claude"
+  "$cc" mcp remove claude-memory -s user >/dev/null 2>&1 || true
+  "$cc" mcp add claude-memory -s user -- node "$dir/dist/mcp-server.js"
+  echo "  claude-memory built + configured (embeddings -> $MEMORY_EMBEDDING_URL)"
 }
 
 user_phase() {
@@ -129,6 +169,9 @@ user_phase() {
   curl -fsSL https://claude.ai/install.sh | bash
   log "codex"
   sudo npm install -g @openai/codex >/dev/null && echo "  codex installed"
+
+  [[ "$WITH_CODEX_SWARM" -eq 1 ]] && { log "codex-swarm mcp"; setup_codex_swarm; }
+  [[ "$WITH_MEMORY" -eq 1 ]] && { log "claude-memory"; setup_memory; }
 
   log "nvim plugins (best-effort)"
   timeout 200 nvim --headless "+Lazy! install" +qa >/dev/null 2>&1 || echo "  (partial -- finishes on first launch)"
@@ -186,9 +229,10 @@ root_phase() {
   fi
 
   log "apt: packages"
-  local pkgs="zsh neovim ripgrep fd-find unzip jq build-essential nodejs npm eza zoxide fontconfig dbus-user-session gh wireguard-tools"
+  local pkgs="zsh neovim ripgrep fd-find unzip jq build-essential python3 nodejs npm eza zoxide fontconfig dbus-user-session gh wireguard-tools"
   [[ "$WITH_GUI" -eq 1 ]] && pkgs+=" sway foot wayvnc bemenu wl-clipboard grim slurp"
   apt-get install -y -qq $pkgs >/dev/null
+  [[ "$WITH_MEMORY" -eq 1 ]] && { log "pnpm (claude-memory build)"; npm install -g pnpm >/dev/null 2>&1 || true; }
 
   log "user: $USER_NAME"
   id "$USER_NAME" &>/dev/null || useradd -m -u 1000 -s /usr/bin/zsh "$USER_NAME"
@@ -206,8 +250,8 @@ root_phase() {
   log "hand off to user phase as $USER_NAME"
   sudo --preserve-env=GH_TOKEN -H -u "$USER_NAME" bash -c "
     set -euo pipefail
-    $(declare -f log install_font setup_wayvnc_local user_phase)
-    DOTS_REPO='$DOTS_REPO' USER_NAME='$USER_NAME' WITH_GUI='$WITH_GUI' WAYVNC_BIND='$WAYVNC_BIND' user_phase
+    $(declare -f log install_font setup_wayvnc_local setup_codex_swarm setup_memory user_phase)
+    DOTS_REPO='$DOTS_REPO' USER_NAME='$USER_NAME' WITH_GUI='$WITH_GUI' WAYVNC_BIND='$WAYVNC_BIND' WITH_MEMORY='$WITH_MEMORY' MEMORY_EMBEDDING_URL='$MEMORY_EMBEDDING_URL' WITH_CODEX_SWARM='$WITH_CODEX_SWARM' user_phase
   "
   log "done -- box provisioned"
 }
