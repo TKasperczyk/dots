@@ -176,3 +176,6 @@ case ":$PATH:" in
   *) export PATH="$PNPM_HOME:$PATH" ;;
 esac
 # pnpm end
+
+# Trust Play internal CA (for ai-toolbox MCP over the OpenShift route)
+export NODE_EXTRA_CA_CERTS="$HOME/.claude/playcloud-ca.pem"
