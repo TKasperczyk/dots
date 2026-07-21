@@ -4,6 +4,9 @@
 local ensure_installed = {
     "javascript", "typescript", "svelte", "c", "lua", "vim",
     "vimdoc", "query", "markdown", "markdown_inline",
+    -- main branch has no auto_install; list everything actually used
+    "python", "bash", "yaml", "json", "toml", "css", "html",
+    "dockerfile", "gitignore", "requirements", "hyprlang", "matlab",
 }
 
 local M = {
