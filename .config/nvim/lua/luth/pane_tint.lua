@@ -28,13 +28,16 @@ local N_FAMILIES = #FAMILY_HUES
 -- The compressed band leaves room for only ~2 distinct shades per family;
 -- beyond that the allocator crosses families, which is the intended trade
 -- (distinctness beats hue loyalty).
+-- C is a whisper on purpose -- the wash is ambience, the accent is the
+-- identifier. Chroma cuts are the one monotonic knob: lower C is less
+-- saturated for every hue identically, converging on "no wash" at zero.
 local SHADES = {
-    { L = 0.27, C = 0.055 },
-    { L = 0.34, C = 0.090 },
-    { L = 0.31, C = 0.045 },
-    { L = 0.25, C = 0.080 },
-    { L = 0.33, C = 0.060 },
-    { L = 0.29, C = 0.095 },
+    { L = 0.27, C = 0.028 },
+    { L = 0.34, C = 0.040 },
+    { L = 0.31, C = 0.022 },
+    { L = 0.25, C = 0.036 },
+    { L = 0.33, C = 0.026 },
+    { L = 0.29, C = 0.045 },
 }
 
 -- Statusline accent per shade slot: same hue, bright and vivid. The block is
