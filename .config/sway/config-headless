@@ -120,3 +120,6 @@ mode "resize" {
     bindsym Return mode "default"
 }
 bindsym $mod+r mode "resize"
+
+# --- Screenshot (Hyprland: bind = ,Print,exec,~/.local/bin/screenshot) -------
+bindsym Print exec "$HOME/.local/bin/screenshot"
