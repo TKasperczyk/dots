@@ -4,6 +4,7 @@ return {
     event = "VeryLazy",
     config = function()
         local term_title = require("luth.term_title")
+        local pane_tint  = require("luth.pane_tint")
 
         -- In a terminal buffer, "filename" is just "zsh", which is useless when
         -- several panes are running Claude side by side. Show what the nested
@@ -57,7 +58,18 @@ return {
                         icon_only = true,
                         padding = { left = 1, right = 0 },
                     },
-                    { session_title, cond = in_terminal },
+                    {
+                        session_title,
+                        cond = in_terminal,
+                        -- The session's identity block: family hue at full
+                        -- vividness, per-shade lightness. The dark background
+                        -- wash alone is too subtle to tell panes apart.
+                        color = function()
+                            local accent = pane_tint.accent()
+                            if not accent then return nil end
+                            return { bg = accent.bg, fg = accent.fg, gui = "bold" }
+                        end,
+                    },
                     { "filename", cond = function() return not in_terminal() end },
                 },
                 lualine_c = {

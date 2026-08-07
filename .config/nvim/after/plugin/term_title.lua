@@ -9,6 +9,7 @@
 -- title redraw.
 
 local term_title = require("luth.term_title")
+local pane_tint  = require("luth.pane_tint")
 
 vim.opt.title    = true
 vim.opt.titleold = vim.fn.fnamemodify(vim.env.SHELL or "", ":t")
@@ -22,6 +23,14 @@ local function sync()
     last = title
     -- 'titlestring' expands statusline items, so a literal % has to be doubled.
     vim.opt.titlestring = title:gsub("%%", "%%%%")
+
+    -- The tint is keyed on cwd (project -> hue family), not on the topic; only
+    -- tint panes hosting a terminal so plain editing windows keep the default.
+    if term_title.current() then
+        pane_tint.apply()
+    else
+        pane_tint.reset()
+    end
 end
 
 vim.api.nvim_create_augroup("TermTitle", { clear = true })
@@ -30,7 +39,17 @@ vim.api.nvim_create_autocmd({ "BufEnter", "TermOpen", "DirChanged" }, {
     callback = sync,
 })
 
+vim.api.nvim_create_autocmd("VimLeavePre", {
+    group    = "TermTitle",
+    callback = function() pane_tint.reset() end,
+})
+
 -- Nothing fires an autocmd when b:term_title changes, so poll. The handle is
--- kept in a local so it is not garbage collected out from under the timer.
-local timer = (vim.uv or vim.loop).new_timer()
-timer:start(POLL_MS, POLL_MS, vim.schedule_wrap(sync))
+-- kept out of local scope so it is not garbage collected out from under the
+-- timer, and so re-sourcing this file stops the previous one instead of
+-- stacking a second poller on top of it.
+if _G.__term_title_timer then
+    pcall(function() _G.__term_title_timer:stop() end)
+end
+_G.__term_title_timer = (vim.uv or vim.loop).new_timer()
+_G.__term_title_timer:start(POLL_MS, POLL_MS, vim.schedule_wrap(sync))
