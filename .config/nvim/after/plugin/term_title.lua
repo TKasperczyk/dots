@@ -18,19 +18,21 @@ local POLL_MS = 500
 
 local last
 local function sync()
-    local title = term_title.window()
-    if title == last then return end
-    last = title
-    -- 'titlestring' expands statusline items, so a literal % has to be doubled.
-    vim.opt.titlestring = title:gsub("%%", "%%%%")
-
-    -- The tint is keyed on cwd (project -> hue family), not on the topic; only
-    -- tint panes hosting a terminal so plain editing windows keep the default.
+    -- The tint is keyed on the shell's cwd, not the title, so it must be
+    -- checked every tick -- a cd can change the project while the title
+    -- stays put. apply()/reset() are cheap no-ops when nothing changed.
+    -- Only panes hosting a terminal are tinted.
     if term_title.current() then
         pane_tint.apply()
     else
         pane_tint.reset()
     end
+
+    local title = term_title.window()
+    if title == last then return end
+    last = title
+    -- 'titlestring' expands statusline items, so a literal % has to be doubled.
+    vim.opt.titlestring = title:gsub("%%", "%%%%")
 end
 
 vim.api.nvim_create_augroup("TermTitle", { clear = true })
