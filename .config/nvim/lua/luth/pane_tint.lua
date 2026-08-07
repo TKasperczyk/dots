@@ -1,7 +1,9 @@
 -- Tint the terminal background + statusline accent so parallel sessions are
--- identifiable at a glance. The project (the shell's cwd) deterministically
--- picks a hue; live sessions coordinate through claim files so any two panes
--- keep a minimum perceptual distance -- across projects, not just within one.
+-- identifiable at a glance. The model: a PROJECT (the shell's cwd) owns a
+-- hue, deterministically from its hash; panes of that project are shades of
+-- it, farthest-first, and are allowed to resemble each other -- similarity
+-- within a project is information. Live projects coordinate through claim
+-- files so two different projects never sit on nearby hues.
 --
 -- All colour math happens in OKLab/OKLCH, not HSL/luma. Every earlier model
 -- broke on a different hue because RGB-adjacent spaces are perceptually
@@ -45,12 +47,12 @@ local SHADES = {
 local ACCENT_L = { 0.68, 0.80, 0.74, 0.62, 0.77, 0.65 }
 local ACCENT_C = 0.16
 
--- Minimum OKLab distance any new pane must keep from every live pane. When a
--- project's own preferred shades can't satisfy it, the allocator walks the
--- whole candidate grid for the farthest option instead of duplicating.
--- Sized to the compressed L band: the indistinguishable teal/blue twin pair
--- measured 0.056, the largest in-family spread is ~0.08.
-local MIN_DELTA = 0.075
+-- Minimum OKLCH hue separation between two different live PROJECTS. Panes of
+-- one project deliberately share a hue -- similarity within a project is
+-- information, not a defect -- so coordination happens per project: a new
+-- project whose preferred hue sits closer than this to a live one takes the
+-- farthest free family hue instead.
+local MIN_HUE_DIST = 80
 
 local CLAIM_DIR = (vim.env.XDG_RUNTIME_DIR or "/tmp") .. "/nvim-pane-tint"
 pcall(vim.fn.mkdir, CLAIM_DIR, "p")
@@ -76,16 +78,6 @@ local function linear_to_srgb(c)
     c = math.max(0, math.min(1, c))
     local v = c <= 0.0031308 and c * 12.92 or 1.055 * c ^ (1 / 2.4) - 0.055
     return math.floor(v * 255 + 0.5)
-end
-
-local function oklab_from_rgb(r8, g8, b8)
-    local r, g, b = srgb_to_linear(r8), srgb_to_linear(g8), srgb_to_linear(b8)
-    local l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ^ (1 / 3)
-    local m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ^ (1 / 3)
-    local s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ^ (1 / 3)
-    return 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-           1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-           0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
 end
 
 -- Returns r,g,b in 0-255, or nil when the OKLab point is outside sRGB.
@@ -116,25 +108,13 @@ local function oklch_hex(L, C, H)
     return string.format("#%02x%02x%02x", r or 40, g or 40, b or 40)
 end
 
-local function delta_e(hex1, hex2)
-    local function lab(hex)
-        return oklab_from_rgb(
-            tonumber(hex:sub(2, 3), 16),
-            tonumber(hex:sub(4, 5), 16),
-            tonumber(hex:sub(6, 7), 16))
-    end
-    local L1, a1, b1 = lab(hex1)
-    local L2, a2, b2 = lab(hex2)
-    return math.sqrt((L1 - L2) ^ 2 + (a1 - a2) ^ 2 + (b1 - b2) ^ 2)
-end
-
 -- ---- project identity ------------------------------------------------------
 
 -- The project identity is the *shell's* cwd, not nvim's: nvim is launched
 -- from $HOME and the shell inside the terminal then cds to the project.
 -- /proc/<pid>/cwd follows the shell's cd live and comes back symlink-resolved
 -- by the kernel, so ~/Programming and /mnt/Programming agree for free.
-local function family_for_cwd()
+local function project_id()
     local dir
     local pid = vim.b.terminal_job_pid
     if pid then
@@ -144,7 +124,8 @@ local function family_for_cwd()
         local cwd = vim.fn.getcwd()
         dir = (vim.uv or vim.loop).fs_realpath(cwd) or cwd
     end
-    return hash(dir) % N_FAMILIES
+    local h = hash(dir)
+    return tostring(h), h % N_FAMILIES
 end
 
 -- ---- claims ----------------------------------------------------------------
@@ -157,11 +138,12 @@ local function pid_alive(pid)
     return (vim.uv or vim.loop).fs_stat("/proc/" .. pid) ~= nil
 end
 
--- Colours of other *live* panes. Claims from dead pids are deleted on sight.
-local function live_colors()
-    local colors = {}
+-- Live claims from other panes: { project, family, shade } each. Claims from
+-- dead pids are deleted on sight.
+local function live_claims()
+    local claims = {}
     local ok, entries = pcall(vim.fn.readdir, CLAIM_DIR)
-    if not ok or type(entries) ~= "table" then return colors end
+    if not ok or type(entries) ~= "table" then return claims end
 
     local mypid = vim.fn.getpid()
     for _, name in ipairs(entries) do
@@ -172,14 +154,17 @@ local function live_colors()
                 pcall(vim.fn.delete, path)
             else
                 local read_ok, lines = pcall(vim.fn.readfile, path)
-                local hex = read_ok and lines and lines[3]
-                if hex and hex:match("^#%x%x%x%x%x%x$") then
-                    colors[#colors + 1] = hex
+                if read_ok and lines and lines[1] and tonumber(lines[2]) and tonumber(lines[3]) then
+                    claims[#claims + 1] = {
+                        project = lines[1],
+                        family  = tonumber(lines[2]),
+                        shade   = tonumber(lines[3]),
+                    }
                 end
             end
         end
     end
-    return colors
+    return claims
 end
 
 function M.color_for(family, shade_idx)
@@ -187,36 +172,63 @@ function M.color_for(family, shade_idx)
     return oklch_hex(shade.L, shade.C, FAMILY_HUES[family + 1])
 end
 
--- Preferred order: own family, shades farthest-first -- deterministic when
--- uncontended, so a project keeps its colour launch after launch. The first
--- candidate that keeps MIN_DELTA from every live pane wins. If none does
--- (many panes, or a perceptually-adjacent family is already on screen -- the
--- teal-next-to-blue case), fall back to the whole grid and take the candidate
--- farthest from its nearest neighbour.
-local function pick_color(family)
-    local taken = live_colors()
-    local function min_delta(hex)
-        local d = math.huge
-        for _, other in ipairs(taken) do
-            d = math.min(d, delta_e(hex, other))
+local function hue_dist(fam_a, fam_b)
+    local d = math.abs(FAMILY_HUES[fam_a + 1] - FAMILY_HUES[fam_b + 1]) % 360
+    return math.min(d, 360 - d)
+end
+
+-- Family: panes of a live project follow its existing choice; a new project
+-- takes its hash-preferred hue unless a DIFFERENT live project sits within
+-- MIN_HUE_DIST of it (the teal-next-to-blue case), in which case it takes the
+-- family farthest from every hue in use. Shade: farthest-first slot unused by
+-- this project's own panes, cycling once exhausted -- same-project siblings
+-- may end up similar, which is intended.
+local function pick_color(project, preferred)
+    local claims = live_claims()
+
+    local family
+    local used = {}
+    for _, c in ipairs(claims) do
+        if c.project == project then
+            family = family or c.family
+        else
+            used[c.family] = true
         end
-        return d
     end
 
+    if not family then
+        local function min_dist(fam)
+            local d = math.huge
+            for other in pairs(used) do
+                d = math.min(d, hue_dist(fam, other))
+            end
+            return d
+        end
+        if min_dist(preferred) >= MIN_HUE_DIST then
+            family = preferred
+        else
+            local best_d = -1
+            for fam = 0, N_FAMILIES - 1 do
+                local d = min_dist(fam)
+                if d > best_d then family, best_d = fam, d end
+            end
+        end
+    end
+
+    local my_shades, my_count = {}, 0
+    for _, c in ipairs(claims) do
+        if c.project == project then
+            my_shades[c.shade] = true
+            my_count = my_count + 1
+        end
+    end
+    local shade
     for i = 1, #SHADES do
-        local hex = M.color_for(family, i)
-        if min_delta(hex) >= MIN_DELTA then return hex, family, i end
+        if not my_shades[i] then shade = i break end
     end
+    shade = shade or (my_count % #SHADES) + 1
 
-    local best_hex, best_fam, best_shade, best_d = M.color_for(family, 1), family, 1, -1
-    for fam = 0, N_FAMILIES - 1 do
-        for i = 1, #SHADES do
-            local hex = M.color_for(fam, i)
-            local d = min_delta(hex)
-            if d > best_d then best_hex, best_fam, best_shade, best_d = hex, fam, i, d end
-        end
-    end
-    return best_hex, best_fam, best_shade
+    return M.color_for(family, shade), family, shade
 end
 
 -- ---- application -----------------------------------------------------------
@@ -227,11 +239,10 @@ local function osc(seq)
     pcall(vim.fn.chansend, vim.v.stderr, seq)
 end
 
--- applied_family is the PROJECT's family (idempotence key: re-pick only when
--- the shell changes project). Under contention the allocator may render a
--- different family's colour, so the accent derives from render_family --
--- otherwise a grid-fallback pane would get an orange wash with a blue block.
-local applied_family, applied_color
+-- applied_project is the idempotence key: re-pick only when the shell changes
+-- project. Under contention the allocator may render a different family than
+-- the project's hash-preferred one, so the accent derives from render_family.
+local applied_project, applied_color
 local render_family, render_shade
 
 -- The statusline block colour for the current session, or nil when untinted.
@@ -247,16 +258,17 @@ function M.accent()
 end
 
 -- Idempotent: called from the title poll, but only touches disk and the tty
--- when the family actually changes (new session, or cd into another project).
+-- when the shell actually changes project (new session, or cd elsewhere).
 function M.apply()
-    local family = family_for_cwd()
-    if family == applied_family then return applied_color end
+    local project, preferred = project_id()
+    if project == applied_project then return applied_color end
 
-    local color, fam_used, shade_idx = pick_color(family)
-    pcall(vim.fn.writefile, { tostring(fam_used), tostring(shade_idx), color }, claim_path())
+    local color, fam_used, shade_idx = pick_color(project, preferred)
+    pcall(vim.fn.writefile,
+        { project, tostring(fam_used), tostring(shade_idx), color }, claim_path())
     osc("\x1b]11;" .. color .. "\x07")
 
-    applied_family, applied_color = family, color
+    applied_project, applied_color = project, color
     render_family, render_shade = fam_used, shade_idx
     return color
 end
@@ -265,9 +277,9 @@ end
 -- configured default back. Runs from the 500ms poll for every non-terminal
 -- buffer, so the not-tinted path must stay free of disk and tty work.
 function M.reset()
-    if not applied_family and vim.fn.filereadable(claim_path()) == 0 then return end
+    if not applied_project and vim.fn.filereadable(claim_path()) == 0 then return end
 
-    applied_family, applied_color = nil, nil
+    applied_project, applied_color = nil, nil
     render_family, render_shade = nil, nil
     pcall(vim.fn.delete, claim_path())
     osc("\x1b]111\x07")
