@@ -195,18 +195,18 @@ local function pick_color(family)
 
     for i = 1, #SHADES do
         local hex = M.color_for(family, i)
-        if min_delta(hex) >= MIN_DELTA then return hex, i end
+        if min_delta(hex) >= MIN_DELTA then return hex, family, i end
     end
 
-    local best_hex, best_shade, best_d = M.color_for(family, 1), 1, -1
+    local best_hex, best_fam, best_shade, best_d = M.color_for(family, 1), family, 1, -1
     for fam = 0, N_FAMILIES - 1 do
         for i = 1, #SHADES do
             local hex = M.color_for(fam, i)
             local d = min_delta(hex)
-            if d > best_d then best_hex, best_shade, best_d = hex, i, d end
+            if d > best_d then best_hex, best_fam, best_shade, best_d = hex, fam, i, d end
         end
     end
-    return best_hex, best_shade
+    return best_hex, best_fam, best_shade
 end
 
 -- ---- application -----------------------------------------------------------
@@ -217,16 +217,21 @@ local function osc(seq)
     pcall(vim.fn.chansend, vim.v.stderr, seq)
 end
 
-local applied_family, applied_shade, applied_color
+-- applied_family is the PROJECT's family (idempotence key: re-pick only when
+-- the shell changes project). Under contention the allocator may render a
+-- different family's colour, so the accent derives from render_family --
+-- otherwise a grid-fallback pane would get an orange wash with a blue block.
+local applied_family, applied_color
+local render_family, render_shade
 
 -- The statusline block colour for the current session, or nil when untinted.
 -- fg flips black/white on the accent's own L so the topic stays readable.
 function M.accent()
-    if not applied_family then return nil end
+    if not render_family then return nil end
 
-    local L = ACCENT_L[applied_shade]
+    local L = ACCENT_L[render_shade]
     return {
-        bg = oklch_hex(L, ACCENT_C, FAMILY_HUES[applied_family + 1]),
+        bg = oklch_hex(L, ACCENT_C, FAMILY_HUES[render_family + 1]),
         fg = L > 0.65 and "#000000" or "#ffffff",
     }
 end
@@ -237,11 +242,12 @@ function M.apply()
     local family = family_for_cwd()
     if family == applied_family then return applied_color end
 
-    local color, shade_idx = pick_color(family)
-    pcall(vim.fn.writefile, { tostring(family), tostring(shade_idx), color }, claim_path())
+    local color, fam_used, shade_idx = pick_color(family)
+    pcall(vim.fn.writefile, { tostring(fam_used), tostring(shade_idx), color }, claim_path())
     osc("\x1b]11;" .. color .. "\x07")
 
-    applied_family, applied_shade, applied_color = family, shade_idx, color
+    applied_family, applied_color = family, color
+    render_family, render_shade = fam_used, shade_idx
     return color
 end
 
@@ -251,7 +257,8 @@ end
 function M.reset()
     if not applied_family and vim.fn.filereadable(claim_path()) == 0 then return end
 
-    applied_family, applied_shade, applied_color = nil, nil, nil
+    applied_family, applied_color = nil, nil
+    render_family, render_shade = nil, nil
     pcall(vim.fn.delete, claim_path())
     osc("\x1b]111\x07")
 end
