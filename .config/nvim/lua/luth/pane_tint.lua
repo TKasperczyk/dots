@@ -34,12 +34,12 @@ local N_FAMILIES = #FAMILY_HUES
 -- identifier. Chroma cuts are the one monotonic knob: lower C is less
 -- saturated for every hue identically, converging on "no wash" at zero.
 local SHADES = {
-    { L = 0.27, C = 0.028 },
-    { L = 0.34, C = 0.040 },
-    { L = 0.31, C = 0.022 },
-    { L = 0.25, C = 0.036 },
-    { L = 0.33, C = 0.026 },
-    { L = 0.29, C = 0.045 },
+    { L = 0.23, C = 0.028 },
+    { L = 0.29, C = 0.040 },
+    { L = 0.26, C = 0.022 },
+    { L = 0.21, C = 0.036 },
+    { L = 0.28, C = 0.026 },
+    { L = 0.24, C = 0.045 },
 }
 
 -- Statusline accent per shade slot: same hue, bright and vivid. The block is
