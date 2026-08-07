@@ -6,15 +6,15 @@ TS="$(date +%Y-%m-%d_%H-%M-%S)"
 PNG="$OUT_DIR/satty-${TS}.png"
 JPG="$OUT_DIR/screenshot_${TS}.jpg"
 
-TMP_PNG=$(mktemp --suffix=.png)
-trap "rm -f $TMP_PNG" EXIT
-
 grim -g "$(slurp)" -t ppm - | satty --filename - --output-filename "$PNG"
 
-# If user saved from satty, convert and copy
+# If user saved from satty, copy then convert.
+# Clipboard first, straight from the original PNG: the F7 binding globs for the
+# .jpg, so writing the clipboard before the .jpg exists keeps F7 from racing us
+# and having its path clobbered by this copy.
 if [ -f "$PNG" ]; then
-    convert "$PNG" -quality 85 "$JPG"
+    wl-copy -t image/png < "$PNG"
+    magick "$PNG" -quality 85 "$JPG"
     rm "$PNG"
-    wl-copy -t image/png < <(convert "$JPG" png:-)
     notify-send "📸 Screenshot saved to $JPG (clipboard)"
 fi
