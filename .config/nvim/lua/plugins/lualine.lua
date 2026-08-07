@@ -3,6 +3,28 @@ return {
     dependencies = { "nvim-tree/nvim-web-devicons" },
     event = "VeryLazy",
     config = function()
+        local term_title = require("luth.term_title")
+
+        -- In a terminal buffer, "filename" is just "zsh", which is useless when
+        -- several panes are running Claude side by side. Show what the nested
+        -- program set as its OSC title instead.
+        local MAX_TITLE_LEN = 48
+
+        local session_title = function()
+            local title = term_title.current()
+            if not title then
+                return ""
+            end
+            if #title > MAX_TITLE_LEN then
+                title = title:sub(1, MAX_TITLE_LEN - 1) .. "…"
+            end
+            return title
+        end
+
+        local in_terminal = function()
+            return term_title.current() ~= nil
+        end
+
         -- Custom Lualine component to show attached language server
         local clients_lsp = function()
             local bufnr = vim.api.nvim_get_current_buf()
@@ -35,7 +57,8 @@ return {
                         icon_only = true,
                         padding = { left = 1, right = 0 },
                     },
-                    "filename",
+                    { session_title, cond = in_terminal },
+                    { "filename", cond = function() return not in_terminal() end },
                 },
                 lualine_c = {
                     {
