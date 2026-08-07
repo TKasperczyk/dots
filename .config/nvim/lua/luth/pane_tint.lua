@@ -207,11 +207,30 @@ local function pick_color(project, preferred)
         if min_dist(preferred) >= MIN_HUE_DIST then
             family = preferred
         else
+            -- Bumped project. Taking the single farthest hue makes EVERY
+            -- bumped project a deterministic function of the live set alone,
+            -- so Downloads and Projects/GEN render identically. Instead,
+            -- collect all families within tolerance of the best separation
+            -- and index into them by project hash -- still deterministic per
+            -- project, but different bumped projects spread out.
+            local scored = {}
             local best_d = -1
             for fam = 0, N_FAMILIES - 1 do
                 local d = min_dist(fam)
-                if d > best_d then family, best_d = fam, d end
+                scored[#scored + 1] = { fam = fam, d = d }
+                best_d = math.max(best_d, d)
             end
+            table.sort(scored, function(a, b)
+                if a.d ~= b.d then return a.d > b.d end
+                return a.fam < b.fam
+            end)
+            local floor = math.max(best_d - 25, 35)
+            local pool = {}
+            for _, s in ipairs(scored) do
+                if s.d >= floor then pool[#pool + 1] = s.fam end
+            end
+            if #pool == 0 then pool = { scored[1].fam } end
+            family = pool[(tonumber(project) % #pool) + 1]
         end
     end
 
