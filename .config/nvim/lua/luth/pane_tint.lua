@@ -11,10 +11,16 @@
 
 local M = {}
 
--- 12 hue families, 30 degrees apart. Which one a project gets is pure
--- hash(cwd) -- deterministic across launches, machines, and sessions.
-local HUE_STEP = 30
-local N_FAMILIES = 360 / HUE_STEP
+-- Hand-picked hue families. NOT uniform 30-degree steps: hue discrimination
+-- is wildly non-uniform -- 90/120/150 are chartreuse/green/spring-green and
+-- all read as "green" at a glance, while 30 degrees around orange is a
+-- different colour outright. Eight nameable hues beat twelve adjacent ones;
+-- projects that collide on a family still get farthest-first shades against
+-- each other, so the collision costs similarity, not identity.
+-- Which family a project gets is pure hash(cwd) -- deterministic across
+-- launches, machines, and sessions.
+local FAMILY_HUES = { 0, 28, 55, 115, 172, 225, 270, 315 }
+local N_FAMILIES = #FAMILY_HUES
 
 -- Shade slots within a family, farthest-first. Shades are defined by target
 -- LUMA (perceived brightness, 0-255), not HSL lightness: yellow at a given
@@ -23,13 +29,15 @@ local N_FAMILIES = 360 / HUE_STEP
 -- Every colour is scaled to its slot's luma, so all families read equally
 -- dark. The band tops out at 42 -- deep enough for light-on-dark text even
 -- when the emulator composites the colour over a bright wallpaper.
+-- dh nudges stay small: with hand-picked family hues a large offset would
+-- push a shade into the neighbouring family's colour.
 local SHADES = {
     { luma = 22, s = 0.60, dh = 0,   accent_l = 0.45 },
-    { luma = 55, s = 0.85, dh = 18,  accent_l = 0.70 },
-    { luma = 38, s = 0.55, dh = -14, accent_l = 0.57 },
-    { luma = 46, s = 0.95, dh = 8,   accent_l = 0.63 },
-    { luma = 30, s = 0.70, dh = 26,  accent_l = 0.51 },
-    { luma = 14, s = 1.00, dh = -8,  accent_l = 0.38 },
+    { luma = 55, s = 0.85, dh = 12,  accent_l = 0.70 },
+    { luma = 38, s = 0.55, dh = -10, accent_l = 0.57 },
+    { luma = 46, s = 0.95, dh = 6,   accent_l = 0.63 },
+    { luma = 30, s = 0.70, dh = 16,  accent_l = 0.51 },
+    { luma = 14, s = 1.00, dh = -6,  accent_l = 0.38 },
 }
 
 -- The dark wash alone is deliberately subtle -- dark colours converge
@@ -145,7 +153,7 @@ end
 
 function M.color_for(family, shade_idx)
     local shade = SHADES[shade_idx]
-    return hue_at_luma(family * HUE_STEP + shade.dh, shade.s, shade.luma)
+    return hue_at_luma(FAMILY_HUES[family + 1] + shade.dh, shade.s, shade.luma)
 end
 
 -- OSC to the outer terminal. v.stderr is the tty nvim's UI writes to; the
@@ -163,7 +171,7 @@ function M.accent()
     if not applied_family then return nil end
 
     local shade = SHADES[applied_shade]
-    local h = applied_family * HUE_STEP + shade.dh
+    local h = FAMILY_HUES[applied_family + 1] + shade.dh
     local r, g, b = hsl_to_rgb(h, ACCENT_S, shade.accent_l)
     local luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
     return {
