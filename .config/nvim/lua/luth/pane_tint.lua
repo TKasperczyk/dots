@@ -1,62 +1,47 @@
--- Tint the terminal background so parallel sessions are identifiable at a
--- glance. The project (the shell's cwd) deterministically picks a hue family,
--- so every session in mic_cms is a shade of the same colour on every launch;
--- shades within a family are handed out farthest-first, so two siblings start
--- maximally far apart and only grow similar as sessions accumulate.
+-- Tint the terminal background + statusline accent so parallel sessions are
+-- identifiable at a glance. The project (the shell's cwd) deterministically
+-- picks a hue; live sessions coordinate through claim files so any two panes
+-- keep a minimum perceptual distance -- across projects, not just within one.
 --
--- Emulator-agnostic on purpose: the colour is set with OSC 11 (and reset with
--- OSC 111) written straight to the outer tty, the same passthrough trick
--- osc52_clipboard.lua uses -- kitty, VTE/Terminator, alacritty and wezterm all
--- honour it. No remote-control protocol, no per-emulator config.
+-- All colour math happens in OKLab/OKLCH, not HSL/luma. Every earlier model
+-- broke on a different hue because RGB-adjacent spaces are perceptually
+-- non-uniform (equal HSL lightness made yellow glow, equal Rec.709 luma made
+-- blue neon and green lurid). In OKLab, equal L is equally dark and equal C
+-- is equally muted for every hue, and Euclidean distance is roughly perceived
+-- difference -- the three properties this feature actually needs.
+--
+-- Emulator-agnostic: colours go out as OSC 11 / OSC 111 on the tty (the
+-- osc52_clipboard.lua passthrough trick). No remote-control protocols.
 
 local M = {}
 
--- Hand-picked hue families. NOT uniform 30-degree steps: hue discrimination
--- is wildly non-uniform -- 90/120/150 are chartreuse/green/spring-green and
--- all read as "green" at a glance, while 30 degrees around orange is a
--- different colour outright. Eight nameable hues beat twelve adjacent ones;
--- projects that collide on a family still get farthest-first shades against
--- each other, so the collision costs similarity, not identity.
--- Which family a project gets is pure hash(cwd) -- deterministic across
--- launches, machines, and sessions.
-local FAMILY_HUES = { 0, 28, 55, 115, 172, 225, 270, 315 }
+-- 8 OKLCH hue angles picked for nameability: red, orange, yellow, green,
+-- teal, blue, violet, magenta. hash(cwd) -> hue is deterministic across
+-- launches and machines.
+local FAMILY_HUES = { 25, 60, 100, 140, 180, 240, 290, 340 }
 local N_FAMILIES = #FAMILY_HUES
 
--- Shade slots within a family, farthest-first. Shades are defined by target
--- LUMA (perceived brightness, 0-255), not HSL lightness: yellow at a given
--- lightness has ~3x the luminance of blue at the same lightness, so an
--- L-based palette makes yellow families glow while blue ones stay dark.
--- Every colour is scaled to its slot's luma, so all families read equally
--- dark. The band tops out at 42 -- deep enough for light-on-dark text even
--- when the emulator composites the colour over a bright wallpaper.
--- dh nudges stay small: with hand-picked family hues a large offset would
--- push a shade into the neighbouring family's colour.
--- l generates the colour; luma_cap only ever scales DOWN. Equalizing luma in
--- both directions was a mistake: blue carries ~7% of luma per channel unit
--- versus yellow's ~92%, so scaling blue UP to a shared target maxes the blue
--- channel into neon. Dark-native hues (blue, violet) get their spread from l;
--- glow-prone hues (yellow, green, cyan) generate bright and get clamped to
--- the cap, which becomes their spread instead.
+-- Background shade slots (OKLab L, chroma C), farthest-first in L. All dark
+-- enough for light foreground text; C stays low so no hue can be loud.
 local SHADES = {
-    { l = 0.13, luma_cap = 22, s = 0.60, dh = 0,   accent_l = 0.45 },
-    { l = 0.34, luma_cap = 55, s = 0.85, dh = 12,  accent_l = 0.70 },
-    { l = 0.22, luma_cap = 38, s = 0.55, dh = -10, accent_l = 0.57 },
-    { l = 0.28, luma_cap = 46, s = 0.95, dh = 6,   accent_l = 0.63 },
-    { l = 0.17, luma_cap = 30, s = 0.70, dh = 16,  accent_l = 0.51 },
-    { l = 0.09, luma_cap = 14, s = 1.00, dh = -6,  accent_l = 0.38 },
+    { L = 0.30, C = 0.060 },
+    { L = 0.45, C = 0.085 },
+    { L = 0.37, C = 0.045 },
+    { L = 0.26, C = 0.075 },
+    { L = 0.42, C = 0.060 },
+    { L = 0.33, C = 0.090 },
 }
 
--- The dark wash alone is deliberately subtle -- dark colours converge
--- perceptually, and the emulator may blend wallpaper on top. The loud,
--- instantly-identifiable signal is the ACCENT: the same family hue at full
--- vividness, rendered as a solid block in the statusline where it sits under
--- no body text. accent_l spreads siblings farthest-first in lightness, so two
--- sessions in one project get e.g. a dark-green block and a lime block.
-local ACCENT_S = 0.90
+-- Statusline accent per shade slot: same hue, bright and vivid. The block is
+-- the loud identifier; the background wash is only ambience.
+local ACCENT_L = { 0.68, 0.80, 0.74, 0.62, 0.77, 0.65 }
+local ACCENT_C = 0.16
 
--- Live panes publish their family + shade here so siblings pick a free slot.
--- Files are named by nvim pid: unique everywhere, and a claim whose pid is
--- dead can be reaped instead of leaking a slot.
+-- Minimum OKLab distance any new pane must keep from every live pane. When a
+-- project's own preferred shades can't satisfy it, the allocator walks the
+-- whole candidate grid for the farthest option instead of duplicating.
+local MIN_DELTA = 0.09
+
 local CLAIM_DIR = (vim.env.XDG_RUNTIME_DIR or "/tmp") .. "/nvim-pane-tint"
 pcall(vim.fn.mkdir, CLAIM_DIR, "p")
 
@@ -70,31 +55,73 @@ local function hash(str)
     return h
 end
 
-local function hsl_to_rgb(h, s, l)
-    h = (h % 360) / 360
-    local function f(n)
-        local k = (n + h * 12) % 12
-        local a = s * math.min(l, 1 - l)
-        local c = l - a * math.max(-1, math.min(k - 3, 9 - k, 1))
-        return c * 255
+-- ---- OKLab <-> sRGB (Björn Ottosson's reference coefficients) -------------
+
+local function srgb_to_linear(c)
+    c = c / 255
+    return c <= 0.04045 and c / 12.92 or ((c + 0.055) / 1.055) ^ 2.4
+end
+
+local function linear_to_srgb(c)
+    c = math.max(0, math.min(1, c))
+    local v = c <= 0.0031308 and c * 12.92 or 1.055 * c ^ (1 / 2.4) - 0.055
+    return math.floor(v * 255 + 0.5)
+end
+
+local function oklab_from_rgb(r8, g8, b8)
+    local r, g, b = srgb_to_linear(r8), srgb_to_linear(g8), srgb_to_linear(b8)
+    local l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ^ (1 / 3)
+    local m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ^ (1 / 3)
+    local s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ^ (1 / 3)
+    return 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+           1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+           0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+end
+
+-- Returns r,g,b in 0-255, or nil when the OKLab point is outside sRGB.
+local function rgb_from_oklab(L, a, b)
+    local l = (L + 0.3963377774 * a + 0.2158037573 * b) ^ 3
+    local m = (L - 0.1055613458 * a - 0.0638541728 * b) ^ 3
+    local s = (L - 0.0894841775 * a - 1.2914855480 * b) ^ 3
+    local r  =  4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s
+    local g  = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s
+    local b2 = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    if r < -0.001 or r > 1.001 or g < -0.001 or g > 1.001 or b2 < -0.001 or b2 > 1.001 then
+        return nil
     end
-    return f(0), f(8), f(4)
+    return linear_to_srgb(r), linear_to_srgb(g), linear_to_srgb(b2)
 end
 
--- Generate at the shade's lightness, then clamp Rec.709 luma to the cap --
--- scaling down only. Uniform scaling preserves the hue and saturation
--- ratios, so this darkens without greying.
-local function hue_capped(h, s, l, luma_cap)
-    local r, g, b = hsl_to_rgb(h, s, l)
-    local luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
-    local scale = math.min(1, luma_cap / math.max(luma, 1))
-    local function q(v) return math.floor(v * scale + 0.5) end
-    return string.format("#%02x%02x%02x", q(r), q(g), q(b))
+-- OKLCH -> hex, shrinking chroma until the colour fits sRGB. Dark saturated
+-- corners of the gamut are exactly where our shades live, so the clamp runs
+-- often and must preserve L and hue, sacrificing only vividness.
+local function oklch_hex(L, C, H)
+    local rad = math.rad(H)
+    for _ = 1, 12 do
+        local r, g, b = rgb_from_oklab(L, C * math.cos(rad), C * math.sin(rad))
+        if r then return string.format("#%02x%02x%02x", r, g, b) end
+        C = C * 0.82
+    end
+    local r, g, b = rgb_from_oklab(L, 0, 0)
+    return string.format("#%02x%02x%02x", r or 40, g or 40, b or 40)
 end
 
--- The project identity is the *shell's* cwd, not nvim's: nvim is launched from
--- $HOME and the shell inside the terminal then cds to the project, so
--- getcwd() would put every session on this machine in the same family.
+local function delta_e(hex1, hex2)
+    local function lab(hex)
+        return oklab_from_rgb(
+            tonumber(hex:sub(2, 3), 16),
+            tonumber(hex:sub(4, 5), 16),
+            tonumber(hex:sub(6, 7), 16))
+    end
+    local L1, a1, b1 = lab(hex1)
+    local L2, a2, b2 = lab(hex2)
+    return math.sqrt((L1 - L2) ^ 2 + (a1 - a2) ^ 2 + (b1 - b2) ^ 2)
+end
+
+-- ---- project identity ------------------------------------------------------
+
+-- The project identity is the *shell's* cwd, not nvim's: nvim is launched
+-- from $HOME and the shell inside the terminal then cds to the project.
 -- /proc/<pid>/cwd follows the shell's cd live and comes back symlink-resolved
 -- by the kernel, so ~/Programming and /mnt/Programming agree for free.
 local function family_for_cwd()
@@ -110,6 +137,8 @@ local function family_for_cwd()
     return hash(dir) % N_FAMILIES
 end
 
+-- ---- claims ----------------------------------------------------------------
+
 local function claim_path()
     return CLAIM_DIR .. "/" .. vim.fn.getpid()
 end
@@ -118,12 +147,11 @@ local function pid_alive(pid)
     return (vim.uv or vim.loop).fs_stat("/proc/" .. pid) ~= nil
 end
 
--- Shade slots held by other *live* panes of the given family. Claims from
--- dead pids are deleted on sight, so crashes cannot leak slots for long.
-local function taken_shades(family)
-    local taken = {}
+-- Colours of other *live* panes. Claims from dead pids are deleted on sight.
+local function live_colors()
+    local colors = {}
     local ok, entries = pcall(vim.fn.readdir, CLAIM_DIR)
-    if not ok or type(entries) ~= "table" then return taken end
+    if not ok or type(entries) ~= "table" then return colors end
 
     local mypid = vim.fn.getpid()
     for _, name in ipairs(entries) do
@@ -134,33 +162,54 @@ local function taken_shades(family)
                 pcall(vim.fn.delete, path)
             else
                 local read_ok, lines = pcall(vim.fn.readfile, path)
-                local fam, shade = nil, nil
-                if read_ok and lines then
-                    fam, shade = tonumber(lines[1]), tonumber(lines[2])
-                end
-                if fam == family and shade then
-                    taken[shade] = true
+                local hex = read_ok and lines and lines[3]
+                if hex and hex:match("^#%x%x%x%x%x%x$") then
+                    colors[#colors + 1] = hex
                 end
             end
         end
     end
-    return taken
-end
-
--- First free slot in farthest-first order; with everything taken, wrap around
--- to the unavoidable duplicate.
-local function pick_shade(family)
-    local taken = taken_shades(family)
-    for i = 1, #SHADES do
-        if not taken[i] then return i end
-    end
-    return 1
+    return colors
 end
 
 function M.color_for(family, shade_idx)
     local shade = SHADES[shade_idx]
-    return hue_capped(FAMILY_HUES[family + 1] + shade.dh, shade.s, shade.l, shade.luma_cap)
+    return oklch_hex(shade.L, shade.C, FAMILY_HUES[family + 1])
 end
+
+-- Preferred order: own family, shades farthest-first -- deterministic when
+-- uncontended, so a project keeps its colour launch after launch. The first
+-- candidate that keeps MIN_DELTA from every live pane wins. If none does
+-- (many panes, or a perceptually-adjacent family is already on screen -- the
+-- teal-next-to-blue case), fall back to the whole grid and take the candidate
+-- farthest from its nearest neighbour.
+local function pick_color(family)
+    local taken = live_colors()
+    local function min_delta(hex)
+        local d = math.huge
+        for _, other in ipairs(taken) do
+            d = math.min(d, delta_e(hex, other))
+        end
+        return d
+    end
+
+    for i = 1, #SHADES do
+        local hex = M.color_for(family, i)
+        if min_delta(hex) >= MIN_DELTA then return hex, i end
+    end
+
+    local best_hex, best_shade, best_d = M.color_for(family, 1), 1, -1
+    for fam = 0, N_FAMILIES - 1 do
+        for i = 1, #SHADES do
+            local hex = M.color_for(fam, i)
+            local d = min_delta(hex)
+            if d > best_d then best_hex, best_shade, best_d = hex, i, d end
+        end
+    end
+    return best_hex, best_shade
+end
+
+-- ---- application -----------------------------------------------------------
 
 -- OSC to the outer terminal. v.stderr is the tty nvim's UI writes to; the
 -- sequence passes through nvim's terminal layer untouched.
@@ -171,18 +220,14 @@ end
 local applied_family, applied_shade, applied_color
 
 -- The statusline block colour for the current session, or nil when untinted.
--- Returns { bg, fg }: fg flips black/white on the accent's own luma so the
--- topic text stays readable on any hue.
+-- fg flips black/white on the accent's own L so the topic stays readable.
 function M.accent()
     if not applied_family then return nil end
 
-    local shade = SHADES[applied_shade]
-    local h = FAMILY_HUES[applied_family + 1] + shade.dh
-    local r, g, b = hsl_to_rgb(h, ACCENT_S, shade.accent_l)
-    local luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    local L = ACCENT_L[applied_shade]
     return {
-        bg = string.format("#%02x%02x%02x", math.floor(r + 0.5), math.floor(g + 0.5), math.floor(b + 0.5)),
-        fg = luma > 110 and "#000000" or "#ffffff",
+        bg = oklch_hex(L, ACCENT_C, FAMILY_HUES[applied_family + 1]),
+        fg = L > 0.65 and "#000000" or "#ffffff",
     }
 end
 
@@ -192,9 +237,7 @@ function M.apply()
     local family = family_for_cwd()
     if family == applied_family then return applied_color end
 
-    local shade_idx = pick_shade(family)
-    local color = M.color_for(family, shade_idx)
-
+    local color, shade_idx = pick_color(family)
     pcall(vim.fn.writefile, { tostring(family), tostring(shade_idx), color }, claim_path())
     osc("\x1b]11;" .. color .. "\x07")
 
