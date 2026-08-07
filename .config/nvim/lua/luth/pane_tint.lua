@@ -31,13 +31,19 @@ local N_FAMILIES = #FAMILY_HUES
 -- when the emulator composites the colour over a bright wallpaper.
 -- dh nudges stay small: with hand-picked family hues a large offset would
 -- push a shade into the neighbouring family's colour.
+-- l generates the colour; luma_cap only ever scales DOWN. Equalizing luma in
+-- both directions was a mistake: blue carries ~7% of luma per channel unit
+-- versus yellow's ~92%, so scaling blue UP to a shared target maxes the blue
+-- channel into neon. Dark-native hues (blue, violet) get their spread from l;
+-- glow-prone hues (yellow, green, cyan) generate bright and get clamped to
+-- the cap, which becomes their spread instead.
 local SHADES = {
-    { luma = 22, s = 0.60, dh = 0,   accent_l = 0.45 },
-    { luma = 55, s = 0.85, dh = 12,  accent_l = 0.70 },
-    { luma = 38, s = 0.55, dh = -10, accent_l = 0.57 },
-    { luma = 46, s = 0.95, dh = 6,   accent_l = 0.63 },
-    { luma = 30, s = 0.70, dh = 16,  accent_l = 0.51 },
-    { luma = 14, s = 1.00, dh = -6,  accent_l = 0.38 },
+    { l = 0.13, luma_cap = 22, s = 0.60, dh = 0,   accent_l = 0.45 },
+    { l = 0.34, luma_cap = 55, s = 0.85, dh = 12,  accent_l = 0.70 },
+    { l = 0.22, luma_cap = 38, s = 0.55, dh = -10, accent_l = 0.57 },
+    { l = 0.28, luma_cap = 46, s = 0.95, dh = 6,   accent_l = 0.63 },
+    { l = 0.17, luma_cap = 30, s = 0.70, dh = 16,  accent_l = 0.51 },
+    { l = 0.09, luma_cap = 14, s = 1.00, dh = -6,  accent_l = 0.38 },
 }
 
 -- The dark wash alone is deliberately subtle -- dark colours converge
@@ -75,14 +81,14 @@ local function hsl_to_rgb(h, s, l)
     return f(0), f(8), f(4)
 end
 
--- Generate the hue at a roomy lightness, then scale the whole triple so its
--- Rec.709 luma lands on the target. Uniform scaling preserves the hue and
--- saturation ratios, so this darkens without greying.
-local function hue_at_luma(h, s, target_luma)
-    local r, g, b = hsl_to_rgb(h, s, 0.30)
+-- Generate at the shade's lightness, then clamp Rec.709 luma to the cap --
+-- scaling down only. Uniform scaling preserves the hue and saturation
+-- ratios, so this darkens without greying.
+local function hue_capped(h, s, l, luma_cap)
+    local r, g, b = hsl_to_rgb(h, s, l)
     local luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
-    local scale = target_luma / math.max(luma, 1)
-    local function q(v) return math.floor(math.min(255, v * scale) + 0.5) end
+    local scale = math.min(1, luma_cap / math.max(luma, 1))
+    local function q(v) return math.floor(v * scale + 0.5) end
     return string.format("#%02x%02x%02x", q(r), q(g), q(b))
 end
 
@@ -153,7 +159,7 @@ end
 
 function M.color_for(family, shade_idx)
     local shade = SHADES[shade_idx]
-    return hue_at_luma(FAMILY_HUES[family + 1] + shade.dh, shade.s, shade.luma)
+    return hue_capped(FAMILY_HUES[family + 1] + shade.dh, shade.s, shade.l, shade.luma_cap)
 end
 
 -- OSC to the outer terminal. v.stderr is the tty nvim's UI writes to; the
