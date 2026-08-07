@@ -21,15 +21,20 @@ local M = {}
 local FAMILY_HUES = { 25, 60, 100, 140, 180, 240, 290, 340 }
 local N_FAMILIES = #FAMILY_HUES
 
--- Background shade slots (OKLab L, chroma C), farthest-first in L. All dark
--- enough for light foreground text; C stays low so no hue can be loud.
+-- Background shade slots (OKLab L, chroma C), farthest-first in L. The band
+-- is calibrated to the brightness that was already accepted in the pre-OKLab
+-- iteration: its gamma-luma cap of 55 corresponds to OKLab L 0.34, so that is
+-- the ceiling -- anything higher reads as glare over a bright wallpaper.
+-- The compressed band leaves room for only ~2 distinct shades per family;
+-- beyond that the allocator crosses families, which is the intended trade
+-- (distinctness beats hue loyalty).
 local SHADES = {
-    { L = 0.30, C = 0.060 },
-    { L = 0.45, C = 0.085 },
-    { L = 0.37, C = 0.045 },
-    { L = 0.26, C = 0.075 },
-    { L = 0.42, C = 0.060 },
-    { L = 0.33, C = 0.090 },
+    { L = 0.27, C = 0.055 },
+    { L = 0.34, C = 0.090 },
+    { L = 0.31, C = 0.045 },
+    { L = 0.25, C = 0.080 },
+    { L = 0.33, C = 0.060 },
+    { L = 0.29, C = 0.095 },
 }
 
 -- Statusline accent per shade slot: same hue, bright and vivid. The block is
@@ -40,7 +45,9 @@ local ACCENT_C = 0.16
 -- Minimum OKLab distance any new pane must keep from every live pane. When a
 -- project's own preferred shades can't satisfy it, the allocator walks the
 -- whole candidate grid for the farthest option instead of duplicating.
-local MIN_DELTA = 0.09
+-- Sized to the compressed L band: the indistinguishable teal/blue twin pair
+-- measured 0.056, the largest in-family spread is ~0.08.
+local MIN_DELTA = 0.075
 
 local CLAIM_DIR = (vim.env.XDG_RUNTIME_DIR or "/tmp") .. "/nvim-pane-tint"
 pcall(vim.fn.mkdir, CLAIM_DIR, "p")
