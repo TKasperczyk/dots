@@ -178,4 +178,7 @@ esac
 # pnpm end
 
 # Trust Play internal CA (for ai-toolbox MCP over the OpenShift route)
-export NODE_EXTRA_CA_CERTS="$HOME/.claude/playcloud-ca.pem"
+# Only export if present - a missing file makes node/bun warn on every launch.
+if [[ -f "$HOME/.claude/playcloud-ca.pem" ]]; then
+  export NODE_EXTRA_CA_CERTS="$HOME/.claude/playcloud-ca.pem"
+fi
