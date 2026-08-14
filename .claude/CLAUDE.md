@@ -74,11 +74,27 @@ The tool is `mcp__codex-swarm__codex` (the MCP server is named `codex-swarm`, no
 
 **Prefer `mcp__codex-swarm__codex_async` for anything non-trivial**: the
 synchronous tool times out at ~300s and abandons long tasks. `codex_async`
-returns a `task_id`; collect with `codex_wait` (accepts a list) or poll with
-`codex_status`. `codex_wait` may itself time out at 120s and move to a
-background task, but the underlying Codex process keeps running and completes.
-To resume a thread in the background, pass `threadId` to `codex_async` rather
-than using `codex_reply` -- only the async path survives a client idle timeout.
+returns a `task_id`; collect it with `codex_wait` (accepts a list, so launch
+everything first and collect in one call).
+
+**Never end a turn with a codex task uncollected.** A `codex_async` task_id is
+internal to the codex-swarm server. Claude Code does not track it, it does not
+appear in `/tasks`, and nothing wakes the session when it finishes -- the task
+runs to completion and the result is stranded on disk. `codex_status` is a
+progress peek only; it collects nothing and keeps nothing alive. The only call
+that brings a result back is `codex_wait`.
+
+**Let `codex_wait` run long. Do not set a short timeout.** Claude Code moves any
+main-conversation tool call still running after 2 minutes into a tracked
+background task and re-invokes the session with the result when it settles.
+That is the wake-up mechanism, so crossing the 2-minute line is the goal, not a
+failure mode. Picking `timeout: 115` to return just under it is exactly
+backwards: it trades a guaranteed harness-delivered result for a promise you
+have to remember to keep. (Server versions from 1.9.0 raise short timeouts to a
+floor for this reason.) Already-finished tasks return instantly either way.
+
+To resume a thread, pass `threadId` to `codex_async` rather than using
+`codex_reply` -- only the async path survives a client idle timeout.
 
 When using any of them, ALWAYS include these parameters to prevent hanging:
 - `sandbox: "workspace-write"` (or `"danger-full-access"` for full system access)
