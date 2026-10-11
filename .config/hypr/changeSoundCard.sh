@@ -4,7 +4,7 @@ printarr() { declare -n __p="$1"; for k in "${!__p[@]}"; do printf "%s=%s\n" "$k
 
 SINKS=$(pactl list short sinks)
 
-SINKS_ALLOWED=("JBL" "bluez_output" "pci-0000_00" "AudioQuest" "hdmi-stereo")
+SINKS_ALLOWED=("JBL" "bluez_output" "pci-0000_" "AudioQuest" "hdmi-stereo")
 declare -A SINKS_MAPPED
 declare -A SINKS_INDEXES_MAPPED
 CURRENT_SINK_NAME=$(pactl get-default-sink)
@@ -12,7 +12,7 @@ CURRENT_SINK_NAME=$(pactl get-default-sink)
 while IFS= read -r SINK; do
 	for SINK_ALLOWED in "${SINKS_ALLOWED[@]}"; do
 		if [[ "$SINK" =~ $SINK_ALLOWED ]]; then
-			SINK_NUMBER=$(echo $SINK | grep -oP "^[0-9]{1,5}")
+			SINK_NUMBER=$(echo $SINK | awk '{print $1}')
 			SINKS_MAPPED[$SINK_NUMBER]=$(echo $SINK | awk '{print $2}' )
 			break
 		fi	
